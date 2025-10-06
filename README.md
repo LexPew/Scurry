@@ -63,9 +63,8 @@ Explore a procedurally generated sewer system infested with swarms of rats, usin
 ```bash
 git clone https://github.com/<your-username>/rat-nest.git
 cd rat-nest
-
-
-### Open In Unity
+---
+### Open the Proejct
 - Launch Unity Hub
 - Click 'Add Project'
 - Select the clone repo
