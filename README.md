@@ -61,8 +61,8 @@ Explore a procedurally generated sewer system infested with swarms of rats, usin
 
 ### Clone the Repository
 ```bash
-git clone https://github.com/<your-username>/rat-nest.git
-cd rat-nest
+git clone https://github.com/LexPew/Scurry.git
+cd Scurry
 ```
 
 ### Open the Project
