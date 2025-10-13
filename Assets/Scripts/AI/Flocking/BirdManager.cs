@@ -17,6 +17,14 @@ public class BirdManager : MonoBehaviour
     public float perceptionRadius = 10.0f;
     public float seperationDistance = 8.0f;
     public float alignDistance = 8.0f;
+
+    public Vector3 target = new Vector3(0, 0, 0);
+    public float targetStrength = 0.8f;
+
+    [SerializeField] Transform targetUI;
+
+    [Range(0, 10)] public float rotationSpeed;
+
     void Start()
     {
         AddBirds();
@@ -24,7 +32,13 @@ public class BirdManager : MonoBehaviour
 
     void Update()
     {
+        if (Input.GetMouseButtonDown(0))
+        {
+            target = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
+            target.y = 0;
+            targetUI.position = target;
+        }
     }
     [ContextMenu("Add Birds")]
     private void AddBirds()

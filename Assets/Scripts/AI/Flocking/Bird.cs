@@ -7,14 +7,15 @@ public class Bird : MonoBehaviour
     public BirdManager flockManager;
 
     [Header("Bird Settings")]
-    [SerializeField] private float maxSpeed = 10.0f;
-    [SerializeField] private float seperationDistance = 5.0f;
+    [SerializeField] private float maxSpeed = 15.0f;
+
 
     private Vector3 velocity;
 
     void Start()
     {
         velocity = new Vector3(Random.Range(-1f, 1f), 0, Random.Range(-1f, 1f));
+
     }
 
     void Update()
@@ -23,8 +24,10 @@ public class Bird : MonoBehaviour
         Vector3 cohesionVelo = (Cohesion() - transform.position).normalized * flockManager.cohesionStrength;
         Vector3 separationVelo = Seperation().normalized * flockManager.separationStrength;
         Vector3 alignmentVelo = (Align() - transform.position).normalized * flockManager.alignStrength;
+        Vector3 targetAcq = (flockManager.target - transform.position).normalized * flockManager.targetStrength;
+
         // Combine both
-        velocity += cohesionVelo + separationVelo + alignmentVelo;
+        velocity += cohesionVelo + separationVelo + alignmentVelo + targetAcq;
 
         // Keep birds on flat plane (XZ only)
         velocity.y = 0;
@@ -32,6 +35,11 @@ public class Bird : MonoBehaviour
         // Limit speed
         velocity = Vector3.ClampMagnitude(velocity, maxSpeed);
 
+        Vector3 targetPos = (transform.position + velocity);
+        Vector3 targetPostition = new Vector3(targetPos.x,
+                                               transform.position.y,
+                                               targetPos.z);
+        transform.LookAt(targetPostition);
         // Move bird
         transform.position += velocity * Time.deltaTime;
     }
