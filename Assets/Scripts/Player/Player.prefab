@@ -261,13 +261,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   walkSpeed: 6
   runSpeed: 12
-  jumpPower: 7
-  gravity: 10
-  lookSpeed: 2
-  lookXLimit: 45
   defaultHeight: 2
   crouchHeight: 1
   crouchSpeed: 3
+  cameraZoom: 15
   horizontalLookSpeed: 2
 --- !u!143 &8311621941038009016
 CharacterController:
@@ -488,11 +485,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   walkSpeed: 6
   runSpeed: 12
-  jumpPower: 7
-  gravity: 10
-  lookSpeed: 2
-  lookXLimit: 45
   defaultHeight: 2
   crouchHeight: 1
   crouchSpeed: 3
+  cameraZoom: 15
   horizontalLookSpeed: 2
