@@ -362,12 +362,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9bee066844211274198beca1912c4b5d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  steps: 1
-  gridSize: 20
-  maxSewerSize: 20
-  nodeCount: 2
-  sewerStraight: {fileID: 5579293696758320563, guid: 360f66833d455a64980a24b844bffe31,
-    type: 3}
+  nodeSpacing: 1
+  nodeSize: 20
+  gridSizeX: 20
+  gridSizeY: 20
+  nodeChance: 0.5
+  minNodes: 10
+  sewerDeadEnd: {fileID: 0}
+  sewerCorner: {fileID: 0}
+  sewerStraight: {fileID: 0}
+  sewerTJunction: {fileID: 0}
+  sewerConnections: {fileID: 0}
 --- !u!4 &1248830367
 Transform:
   m_ObjectHideFlags: 0
@@ -376,7 +381,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1248830365}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 20.714224, y: 29.831568, z: -1.9884218}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
