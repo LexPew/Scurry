@@ -362,17 +362,49 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9bee066844211274198beca1912c4b5d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  nodeSpacing: 1
-  nodeSize: 20
-  gridSizeX: 20
-  gridSizeY: 20
-  nodeChance: 0.5
-  minNodes: 10
-  sewerDeadEnd: {fileID: 0}
-  sewerCorner: {fileID: 0}
-  sewerStraight: {fileID: 0}
-  sewerTJunction: {fileID: 0}
-  sewerConnections: {fileID: 0}
+  gridWidth: 50
+  gridHeight: 50
+  cellSize: 20
+  numRooms: 43
+  maxPlacementAttempts: 250
+  roomSpacing: 1
+  minTurnSpacing: 3
+  zigzagChance: 0.45
+  avoidIntersections: 1
+  maxPathAttempts: 6
+  seed: 0
+  rooms: []
+  tilePrefabsByConnection:
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  DefaultTilePrefab: {fileID: 5579293696758320563, guid: 360f66833d455a64980a24b844bffe31,
+    type: 3}
+  StartPrefab: {fileID: 5579293696758320563, guid: 360f66833d455a64980a24b844bffe31,
+    type: 3}
+  GoalPrefab: {fileID: 5579293696758320563, guid: 360f66833d455a64980a24b844bffe31,
+    type: 3}
+  prefabNativeSize: 20
+  scalePrefabsToCell: 0
+  parentForTiles: {fileID: 1248830367}
+  drawGizmos: 1
+  autoGenerateOnStart: 1
+  instantiateOnGenerate: 1
+  startRoomIndex: -1
+  goalRoomIndex: -1
 --- !u!4 &1248830367
 Transform:
   m_ObjectHideFlags: 0

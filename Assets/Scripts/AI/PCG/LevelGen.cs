@@ -1,11 +1,7 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Numerics;
-using UnityEditor;
 using UnityEngine;
-using Quaternion = UnityEngine.Quaternion;
-using Vector3 = UnityEngine.Vector3;
-
 
 public enum Directions
 {
@@ -15,94 +11,569 @@ public enum Directions
     West
 }
 
+[Serializable]
+public struct Room
+{
+    // Rooms are now one grid cell (1x1 RectInt). Keep RectInt for minimal API changes.
+    public RectInt rect;
+    public Vector2Int Center => new Vector2Int(rect.x + rect.width / 2, rect.y + rect.height / 2);
+
+    public Room(RectInt r)
+    {
+        rect = r;
+    }
+}
 
 public class LevelGen : MonoBehaviour
 {
+    [Header("Grid")]
+    public int gridWidth = 100;
+    public int gridHeight = 60;
+    public float cellSize = 20f; // world units per grid cell (prefabs are currently 20 units square)
 
+    [Header("Rooms")]
+    public int numRooms = 12;
+    public int maxPlacementAttempts = 250;
+    public int roomSpacing = 1; // Chebyshev distance between single-tile rooms
 
-    List<Vector3> gridPositions = new List<Vector3>();
-    //new method, get random positions on a grid, find corners, send drunkard to make paths between them with varying amounts of straights and turns. dont connect every point or points too close together, just some. then retroactively instantiate appropriate sewer pieces along the paths.
+    [Header("Corridors")]
+    public int minTurnSpacing = 3; // minimum straight length between turns
+    [Range(0f, 1f)]
+    public float zigzagChance = 0.45f; // chance to introduce extra turns
+    public bool avoidIntersections = true;
+    public int maxPathAttempts = 6;
 
-    // Grid parameters
-    public float nodeSpacing = 1.0f; // Distance between nodes, multiplier of node size so the corridors fit neatly.
-    public float nodeSize; //(Grid cell size) Size of each node, used to calculate spacing and positions.
+    [Header("Seed (0 => random)")]
+    public int seed = 0;
 
-    public int gridSizeX; // Grid dimension in X direction.
-    public int gridSizeY; // Grid dimension in Y direction.
-    public float nodeChance; // Chance of a node being present at each grid position (0 to 1).
-    public int minNodes; // Minimum number of nodes to ensure connectivity.
+    // Results
+    public List<Room> rooms = new List<Room>();
+    public HashSet<Vector2Int> corridorTiles = new HashSet<Vector2Int>();
+    public HashSet<Vector2Int> floorTiles = new HashSet<Vector2Int>(); // now represents all occupied sewer grid tiles
 
-    // Sewer piece prefabs, one for each amount of connections, oriented retroactively later.
-    public GameObject sewerDeadEnd; // 1 connection
-    public GameObject sewerCorner; // 2 connections, 90 degree turn
-    public GameObject sewerStraight; // 2 connections, straight line
-    public GameObject sewerTJunction; // 3 connections
+    [Header("Prefabs (index by connection bitmask: N=1, E=2, S=4, W=8)")]
+    [Tooltip("Provide a prefab for each connection mask (0..15). If a slot is empty, DefaultTilePrefab will be used.")]
+    public GameObject[] tilePrefabsByConnection = new GameObject[16];
+    public GameObject DefaultTilePrefab;
+    public GameObject StartPrefab;
+    public GameObject GoalPrefab;
 
-    public GameObject sewerConnections;
+    [Tooltip("Native square size (in world units) that prefabs were authored at. Used to auto-scale prefabs to `cellSize`.")]
+    public float prefabNativeSize = 20f;
+    public bool scalePrefabsToCell = true;
 
-    List<Vector3> nodePositions = new List<Vector3>();
+    [Header("Debug / Instantiation")]
+    public Transform parentForTiles;
+    public bool drawGizmos = true;
+    public bool autoGenerateOnStart = true;
+    public bool instantiateOnGenerate = true; // instantiate generated tiles automatically
 
-    // Start is called before the first frame update
+    // Start and Goal indices
+    public int startRoomIndex = -1;
+    public int goalRoomIndex = -1;
+
+    private System.Random rng;
+
+    // Cardinal dirs for adjacency checks (N,E,S,W)
+    private static readonly Vector2Int[] CardinalDirs = new[] { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
+
     void Start()
     {
-        //Initialise node positions layed out in a grid, with a random chance for some to be empty,
-        //so a grid of n x n size with a node chance of p and a min number of nodes m.
-        //connections between nodes will be no more than 3 per node, and at least 1,
-        //all nodes will need to be connected to the 'sewer' network, with some dead ends possible.
+        if (autoGenerateOnStart)
+            Generate();
+    }
 
+    public void Generate()
+    {
+        rng = seed == 0 ? new System.Random() : new System.Random(seed);
+        rooms.Clear();
+        corridorTiles.Clear();
+        floorTiles.Clear();
+        startRoomIndex = goalRoomIndex = -1;
 
-        nodeSpacing = nodeSize * nodeSpacing; // Ensure spacing matches node size for neat fitting
-        
-        // Generate grid positions with random node placement
-        for (int i = 0; i < gridSizeX; i++)
+        PlaceRoomsAsSingleTiles();
+        PickStartAndGoal();
+        ConnectRooms();
+        StampRoomsAndCorridorsToFloor();
+
+        // instantiate tiles automatically if requested
+        if (instantiateOnGenerate)
+            InstantiatePrefabs();
+    }
+
+    void PlaceRoomsAsSingleTiles()
+    {
+        // Rooms are placed as 1x1 rectangles (crossroads). Use roomSpacing to avoid clustering if desired.
+        int attempts = 0;
+        while (rooms.Count < numRooms && attempts < maxPlacementAttempts)
         {
-            for (int j = 0; j < gridSizeY; j++)
+            attempts++;
+            int x = rng.Next(1, Math.Max(2, gridWidth - 1));
+            int y = rng.Next(1, Math.Max(2, gridHeight - 1));
+            RectInt candidate = new RectInt(x, y, 1, 1);
+
+            bool overlaps = false;
+            foreach (var r in rooms)
             {
-                if (Random.value <= nodeChance)
+                // Chebyshev distance check (includes diagonals) - if within roomSpacing then reject
+                int dx = Math.Abs(r.rect.x - candidate.x);
+                int dy = Math.Abs(r.rect.y - candidate.y);
+                if (Math.Max(dx, dy) <= roomSpacing)
                 {
-                    Vector3 nodePos = new Vector3(i * nodeSpacing, 0, j * nodeSpacing);
-                    nodePositions.Add(nodePos);
+                    overlaps = true;
+                    break;
+                }
+            }
+
+            if (!overlaps)
+            {
+                rooms.Add(new Room(candidate));
+            }
+        }
+
+        // If not enough rooms, try a looser placement (best-effort)
+        if (rooms.Count < numRooms)
+        {
+            int tries = 0;
+            while (rooms.Count < numRooms && tries < maxPlacementAttempts * 2)
+            {
+                tries++;
+                int x = rng.Next(1, Math.Max(2, gridWidth - 1));
+                int y = rng.Next(1, Math.Max(2, gridHeight - 1));
+                RectInt candidate = new RectInt(x, y, 1, 1);
+                bool overlaps = false;
+                foreach (var r in rooms)
+                {
+                    if (r.rect.Overlaps(candidate))
+                    {
+                        overlaps = true;
+                        break;
+                    }
+                }
+                if (!overlaps) rooms.Add(new Room(candidate));
+            }
+        }
+    }
+
+    void PickStartAndGoal()
+    {
+        if (rooms.Count == 0) return;
+
+        // Pick two rooms that are farthest apart (Manhattan)
+        int bestA = 0, bestB = 0;
+        int bestDist = -1;
+        for (int i = 0; i < rooms.Count; i++)
+        {
+            for (int j = i + 1; j < rooms.Count; j++)
+            {
+                int d = ManhattanDistance(rooms[i].Center, rooms[j].Center);
+                if (d > bestDist)
+                {
+                    bestDist = d;
+                    bestA = i;
+                    bestB = j;
                 }
             }
         }
 
-        // Ensure minimum number of nodes, and all nodes are connected at least once
-        while (nodePositions.Count < minNodes)
+        startRoomIndex = bestA;
+        goalRoomIndex = bestB;
+    }
+
+    void ConnectRooms()
+    {
+        // Attempt connections per-room per-cardinal direction to nearest neighbor.
+        var connectedPairs = new HashSet<(int, int)>();
+        for (int i = 0; i < rooms.Count; i++)
         {
-            int i = Random.Range(0, gridSizeX);
-            int j = Random.Range(0, gridSizeY);
-            Vector3 nodePos = new Vector3(i * nodeSpacing, 0, j * nodeSpacing);
-            if (!nodePositions.Contains(nodePos))
+            for (int d = 0; d < 4; d++)
             {
-                nodePositions.Add(nodePos);
+                int j = FindNearestInDirection(i, (Directions)d);
+                if (j >= 0 && j != i)
+                {
+                    var pair = i < j ? (i, j) : (j, i);
+                    if (!connectedPairs.Contains(pair))
+                    {
+                        // Create corridor between rooms[i] and rooms[j]
+                        TryCreateCorridorBetweenRooms(i, j);
+                        // Mark as attempted
+                        connectedPairs.Add(pair);
+                    }
+                }
             }
-            
         }
+    }
 
+    int FindNearestInDirection(int srcIndex, Directions dir)
+    {
+        Vector2Int center = rooms[srcIndex].Center;
+        int bestIdx = -1;
+        int bestDist = int.MaxValue;
 
-
-
-
-        // For debugging: visualize node positions
-        foreach (Vector3 pos in nodePositions)
+        for (int i = 0; i < rooms.Count; i++)
         {
-            GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-            marker.transform.position = pos;
-            marker.transform.localScale = Vector3.one * (nodeSize / 2);
-            marker.GetComponent<Renderer>().material.color = Color.red;
+            if (i == srcIndex) continue;
+            Vector2Int c = rooms[i].Center;
+            int dx = c.x - center.x;
+            int dy = c.y - center.y;
+
+            bool candidate = dir switch
+            {
+                Directions.North => dy > 0,
+                Directions.South => dy < 0,
+                Directions.East => dx > 0,
+                Directions.West => dx < 0,
+                _ => false
+            };
+
+            if (!candidate) continue;
+
+            int dist = Math.Abs(dx) + Math.Abs(dy);
+            if (dist < bestDist)
+            {
+                bestDist = dist;
+                bestIdx = i;
+            }
+        }
+
+        return bestIdx;
+    }
+
+    bool TryCreateCorridorBetweenRooms(int aIndex, int bIndex)
+    {
+        Vector2Int from = rooms[aIndex].Center;
+        Vector2Int to = rooms[bIndex].Center;
+        // Try several path generation attempts, prefer non-intersecting ones.
+        for (int attempt = 0; attempt < maxPathAttempts; attempt++)
+        {
+            var path = CreateZigZagPath(from, to, attempt);
+            bool invalid = false;
+
+            if (avoidIntersections)
+            {
+                // 1) Reject any path that would overlap an existing corridor tile
+                foreach (var p in path)
+                {
+                    if (corridorTiles.Contains(p))
+                    {
+                        invalid = true;
+                        break;
+                    }
+                }
+
+                // 2) Reject paths that would run adjacent (4-neighbor) to an existing corridor tile
+                //    except at the two endpoints (we allow rooms to be adjacent to existing corridors).
+                if (!invalid)
+                {
+                    foreach (var p in path)
+                    {
+                        if (p == from || p == to) continue; // endpoints may touch existing corridors (room connections)
+                        foreach (var d in CardinalDirs)
+                        {
+                            if (corridorTiles.Contains(p + d))
+                            {
+                                invalid = true;
+                                break;
+                            }
+                        }
+                        if (invalid) break;
+                    }
+                }
+            }
+
+            if (!invalid || attempt == maxPathAttempts - 1)
+            {
+                foreach (var p in path) corridorTiles.Add(p);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    List<Vector2Int> CreateZigZagPath(Vector2Int from, Vector2Int to, int attemptSeed = 0)
+    {
+        // Create a path composed of straight segments (axis-aligned).
+        var localRng = new System.Random((seed == 0 ? Environment.TickCount : seed) + attemptSeed + from.x * 37 + from.y * 91);
+
+        int dx = to.x - from.x;
+        int dy = to.y - from.y;
+        int absX = Math.Abs(dx);
+        int absY = Math.Abs(dy);
+        int sx = Math.Sign(dx);
+        int sy = Math.Sign(dy);
+
+        // Decide primary axis (the larger delta) and whether we start with X or Y
+        bool preferX = absX >= absY;
+        // Sometimes flip to add variety
+        if (localRng.NextDouble() < 0.5) preferX = !preferX;
+
+        // With zigzagChance, split the primary axis into two segments so path goes primary -> secondary -> primary (2 turns).
+        bool zigzag = localRng.NextDouble() < zigzagChance && (preferX ? absX : absY) >= minTurnSpacing * 2;
+
+        var points = new List<Vector2Int>();
+        points.Add(from);
+
+        if (!zigzag)
+        {
+            // Single turn path (or straight if one delta is zero)
+            if (preferX)
+            {
+                Vector2Int mid = new Vector2Int(to.x, from.y);
+                if (localRng.NextDouble() < 0.5) mid = new Vector2Int(from.x, to.y);
+                points.Add(mid);
+            }
+            else
+            {
+                Vector2Int mid = new Vector2Int(from.x, to.y);
+                if (localRng.NextDouble() < 0.5) mid = new Vector2Int(to.x, from.y);
+                points.Add(mid);
+            }
+            points.Add(to);
+        }
+        else
+        {
+            // Zig-zag: split primary axis into two segments with a secondary segment in the middle.
+            if (preferX)
+            {
+                int min = Math.Max(1, minTurnSpacing);
+                int max = Math.Max(min, absX - minTurnSpacing);
+                int advance1 = min;
+                if (max > min) advance1 = localRng.Next(min, max + 1);
+                int x1 = from.x + sx * advance1;
+                Vector2Int p1 = new Vector2Int(x1, from.y);
+                Vector2Int p2 = new Vector2Int(x1, to.y);
+                points.Add(p1);
+                points.Add(p2);
+                points.Add(to);
+            }
+            else
+            {
+                int min = Math.Max(1, minTurnSpacing);
+                int max = Math.Max(min, absY - minTurnSpacing);
+                int advance1 = min;
+                if (max > min) advance1 = localRng.Next(min, max + 1);
+                int y1 = from.y + sy * advance1;
+                Vector2Int p1 = new Vector2Int(from.x, y1);
+                Vector2Int p2 = new Vector2Int(to.x, y1);
+                points.Add(p1);
+                points.Add(p2);
+                points.Add(to);
+            }
+        }
+
+        // Convert points into tile list (inclusive of endpoints, axis-aligned lines)
+        var tiles = new List<Vector2Int>();
+        for (int i = 0; i < points.Count - 1; i++)
+        {
+            Vector2Int pA = points[i];
+            Vector2Int pB = points[i + 1];
+
+            if (pA.x == pB.x)
+            {
+                int x = pA.x;
+                int syLine = Math.Sign(pB.y - pA.y);
+                int len = Math.Abs(pB.y - pA.y);
+                for (int t = 0; t <= len; t++)
+                {
+                    tiles.Add(new Vector2Int(x, pA.y + t * syLine));
+                }
+            }
+            else if (pA.y == pB.y)
+            {
+                int y = pA.y;
+                int sxLine = Math.Sign(pB.x - pA.x);
+                int len = Math.Abs(pB.x - pA.x);
+                for (int t = 0; t <= len; t++)
+                {
+                    tiles.Add(new Vector2Int(pA.x + t * sxLine, y));
+                }
+            }
+            else
+            {
+                // Guard: convert to Manhattan interpolation (shouldn't happen)
+                Vector2Int cur = pA;
+                while (cur != pB)
+                {
+                    if (cur.x != pB.x)
+                        cur.x += Math.Sign(pB.x - cur.x);
+                    else if (cur.y != pB.y)
+                        cur.y += Math.Sign(pB.y - cur.y);
+                    tiles.Add(cur);
+                }
+            }
+        }
+
+        return tiles;
+    }
+
+    void StampRoomsAndCorridorsToFloor()
+    {
+        // Mark room tiles (each room is 1x1)
+        foreach (var r in rooms)
+        {
+            for (int x = r.rect.x; x < r.rect.x + r.rect.width; x++)
+            {
+                for (int y = r.rect.y; y < r.rect.y + r.rect.height; y++)
+                {
+                    floorTiles.Add(new Vector2Int(x, y));
+                }
+            }
+        }
+
+        // Add corridors into floor
+        foreach (var p in corridorTiles) floorTiles.Add(p);
+    }
+
+    int ManhattanDistance(Vector2Int a, Vector2Int b)
+    {
+        return Math.Abs(a.x - b.x) + Math.Abs(a.y - b.y);
+    }
+
+    // Instantiate sewer tile prefabs based on connectivity bitmask (N=1, E=2, S=4, W=8).
+    // Start/Goal prefab overrides the mapped prefab if provided.
+    public void InstantiatePrefabs(bool clearParent = true)
+    {
+        if (parentForTiles == null)
+        {
+            parentForTiles = new GameObject("GeneratedTiles").transform;
+            parentForTiles.SetParent(this.transform, false);
+        }
+
+#if UNITY_EDITOR
+        if (clearParent)
+        {
+            // Remove previously created children in editor/runtime for re-instantiation.
+            for (int i = parentForTiles.childCount - 1; i >= 0; i--)
+            {
+                #if UNITY_EDITOR
+                DestroyImmediate(parentForTiles.GetChild(i).gameObject);
+                #else
+                Destroy(parentForTiles.GetChild(i).gameObject);
+                #endif
+            }
+        }
+#endif
+
+        foreach (var v in floorTiles)
+        {
+            GameObject prefab = null;
+
+            // If this tile is the start or goal room, prefer those prefabs when assigned.
+            int roomIndex = rooms.FindIndex(r => r.Center == v);
+            if (roomIndex >= 0)
+            {
+                if (roomIndex == startRoomIndex && StartPrefab != null)
+                    prefab = StartPrefab;
+                else if (roomIndex == goalRoomIndex && GoalPrefab != null)
+                    prefab = GoalPrefab;
+            }
+
+            if (prefab == null)
+            {
+                int mask = GetConnectionMask(v);
+                if (tilePrefabsByConnection != null && mask >= 0 && mask < tilePrefabsByConnection.Length && tilePrefabsByConnection[mask] != null)
+                    prefab = tilePrefabsByConnection[mask];
+                else
+                    prefab = DefaultTilePrefab;
+            }
+
+            if (prefab != null)
+            {
+                // place at the centre of the grid cell scaled by cellSize
+                var worldPos = new Vector3((v.x + 0.5f) * cellSize, 0f, (v.y + 0.5f) * cellSize);
+                var go = Instantiate(prefab, worldPos, Quaternion.identity, parentForTiles);
+
+                // optionally scale the prefab to match the configured cell size
+                if (scalePrefabsToCell && prefabNativeSize > 0f)
+                {
+                    float scaleFactor = cellSize / prefabNativeSize;
+                    go.transform.localScale = Vector3.one * scaleFactor;
+                }
+
+                int mask = GetConnectionMask(v);
+                go.name = $"Sewer_{v.x}_{v.y}_m{mask}";
+            }
         }
     }
 
-    // Update is called once per frame
-    void Update()
+    int GetConnectionMask(Vector2Int pos)
     {
-        
+        int mask = 0;
+        // North = 1, East = 2, South = 4, West = 8
+        if (floorTiles.Contains(pos + Vector2Int.up)) mask |= 1;
+        if (floorTiles.Contains(pos + Vector2Int.right)) mask |= 2;
+        if (floorTiles.Contains(pos + Vector2Int.down)) mask |= 4;
+        if (floorTiles.Contains(pos + Vector2Int.left)) mask |= 8;
+        return mask;
+    }
+       
+    void OnDrawGizmosSelected()
+    {
+        if (!drawGizmos) return;
+
+        // Draw rooms (single-tile crossroads)
+        Gizmos.color = Color.green;
+        if (rooms != null)
+        {
+            for (int i = 0; i < rooms.Count; i++)
+            {
+                var r = rooms[i].rect;
+                Vector3 pos = new Vector3((r.x + 0.5f) * cellSize, 0f, (r.y + 0.5f) * cellSize);
+                Vector3 size = new Vector3(r.width * cellSize, cellSize * 0.05f, r.height * cellSize);
+                Gizmos.DrawWireCube(pos, size);
+
+                // start / goal markers
+                if (i == startRoomIndex) Gizmos.color = Color.cyan;
+                Gizmos.DrawSphere(new Vector3((rooms[i].Center.x + 0.5f) * cellSize, 0f, (rooms[i].Center.y + 0.5f) * cellSize), cellSize * 0.125f);
+                if (i == startRoomIndex) Gizmos.color = Color.green;
+            }
+        }
+
+        // Draw corridors / occupied tiles
+        Gizmos.color = Color.yellow;
+        if (corridorTiles != null)
+        {
+            foreach (var t in corridorTiles)
+            {
+                Gizmos.DrawCube(new Vector3((t.x + 0.5f) * cellSize, 0f, (t.y + 0.5f) * cellSize), Vector3.one * cellSize * 0.9f);
+            }
+        }
+
+        // Draw floor / occupied tiles outlines
+        Gizmos.color = Color.gray;
+        if (floorTiles != null)
+        {
+            foreach (var t in floorTiles)
+            {
+                Gizmos.DrawWireCube(new Vector3((t.x + 0.5f) * cellSize, 0f, (t.y + 0.5f) * cellSize), Vector3.one * cellSize * 0.9f);
+            }
+        }
     }
 
-    Directions randomDir()
+    void OnValidate()
     {
-        Directions dir = (Directions)Random.Range(0, 4);
+        // Ensure the prefab array has 16 entries for the 4-bit connection masks.
+        if (tilePrefabsByConnection == null || tilePrefabsByConnection.Length != 16)
+        {
+            var tmp = new GameObject[16];
+            if (tilePrefabsByConnection != null)
+            {
+                Array.Copy(tilePrefabsByConnection, tmp, Math.Min(tilePrefabsByConnection.Length, tmp.Length));
+            }
+            tilePrefabsByConnection = tmp;
+        }
 
-        return dir;
+        gridWidth = Math.Max(3, gridWidth);
+        gridHeight = Math.Max(3, gridHeight);
+        numRooms = Math.Max(1, numRooms);
+        maxPlacementAttempts = Math.Max(1, maxPlacementAttempts);
+        minTurnSpacing = Math.Max(1, minTurnSpacing);
+        maxPathAttempts = Math.Max(1, maxPathAttempts);
+        roomSpacing = Math.Max(0, roomSpacing);
+
+        // Validate float sizes
+        cellSize = Mathf.Max(0.01f, cellSize);
+        prefabNativeSize = Mathf.Max(0.01f, prefabNativeSize);
     }
 }
