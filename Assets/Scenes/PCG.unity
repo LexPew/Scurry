@@ -252,6 +252,7 @@ GameObject:
   - component: {fileID: 697079703}
   - component: {fileID: 697079702}
   - component: {fileID: 697079701}
+  - component: {fileID: 697079704}
   m_Layer: 0
   m_Name: Main Camera
   m_TagString: MainCamera
@@ -333,6 +334,50 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &697079704
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 697079700}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: a79441f348de89743a2939f4d699eac1, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_RenderShadows: 1
+  m_RequiresDepthTextureOption: 2
+  m_RequiresOpaqueTextureOption: 2
+  m_CameraType: 0
+  m_Cameras: []
+  m_RendererIndex: -1
+  m_VolumeLayerMask:
+    serializedVersion: 2
+    m_Bits: 1
+  m_VolumeTrigger: {fileID: 0}
+  m_VolumeFrameworkUpdateModeOption: 2
+  m_RenderPostProcessing: 0
+  m_Antialiasing: 0
+  m_AntialiasingQuality: 2
+  m_StopNaN: 0
+  m_Dithering: 0
+  m_ClearDepth: 1
+  m_AllowXRRendering: 1
+  m_AllowHDROutput: 1
+  m_UseScreenCoordOverride: 0
+  m_ScreenSizeOverride: {x: 0, y: 0, z: 0, w: 0}
+  m_ScreenCoordScaleBias: {x: 0, y: 0, z: 0, w: 0}
+  m_RequiresDepthTexture: 0
+  m_RequiresColorTexture: 0
+  m_Version: 2
+  m_TaaSettings:
+    quality: 3
+    frameInfluence: 0.1
+    jitterScale: 1
+    mipBias: 0
+    varianceClampScale: 0.9
+    contrastAdaptiveSharpening: 0
 --- !u!1 &1248830365
 GameObject:
   m_ObjectHideFlags: 0
@@ -365,37 +410,37 @@ MonoBehaviour:
   gridWidth: 50
   gridHeight: 50
   cellSize: 20
-  numRooms: 43
+  numRooms: 30
   maxPlacementAttempts: 250
-  roomSpacing: 1
-  minTurnSpacing: 3
-  zigzagChance: 0.45
+  roomSpacing: 4
+  minTurnSpacing: 4
+  zigzagChance: 0.468
   avoidIntersections: 1
   maxPathAttempts: 6
   seed: 0
   rooms: []
   tilePrefabsByConnection:
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  - {fileID: 0}
-  DefaultTilePrefab: {fileID: 5579293696758320563, guid: 360f66833d455a64980a24b844bffe31,
+  - {fileID: 7172104240882360034, guid: 43a47a5a2ec857f4f9421b3da31211a6, type: 3}
+  - {fileID: 7172104240882360034, guid: c6777063b382ac24b865b9916be71b2c, type: 3}
+  - {fileID: 7172104240882360034, guid: c80c06490423566409d3255df62aab39, type: 3}
+  - {fileID: 7172104240882360034, guid: b914ea38f0ebd39488e45b0ae8ccd58d, type: 3}
+  - {fileID: 7172104240882360034, guid: 45b0da8d08ba9434e83f13aa7e73c4a3, type: 3}
+  - {fileID: 7172104240882360034, guid: 88c6763f8eb8dcf49a6b79c2735267ed, type: 3}
+  - {fileID: 7172104240882360034, guid: 94edebbbd0ff9f6469748170babedd43, type: 3}
+  - {fileID: 7172104240882360034, guid: 7a8fa97e1f4567c419fcfcbe063ed4fe, type: 3}
+  - {fileID: 7172104240882360034, guid: 4880c9209ca73ce40b9dd7bb2429de39, type: 3}
+  - {fileID: 7172104240882360034, guid: 64aa1960ed1c40448badd9f28b81e840, type: 3}
+  - {fileID: 7172104240882360034, guid: c89d948cac972df4d8ddb9f8033b24d4, type: 3}
+  - {fileID: 7172104240882360034, guid: 3317d56b0a4b44a42a85e768d3697c47, type: 3}
+  - {fileID: 7172104240882360034, guid: f12e025d65e32d041ad3b395228e86f7, type: 3}
+  - {fileID: 7172104240882360034, guid: 94df7704589705b448e1e4500347dc1c, type: 3}
+  - {fileID: 7172104240882360034, guid: 2e150f7811d52c24eb572e56f253ed05, type: 3}
+  - {fileID: 7172104240882360034, guid: b010610e1889ef74e9f9a88f6ba1cb9f, type: 3}
+  DefaultTilePrefab: {fileID: 7172104240882360034, guid: 43a47a5a2ec857f4f9421b3da31211a6,
     type: 3}
-  StartPrefab: {fileID: 5579293696758320563, guid: 360f66833d455a64980a24b844bffe31,
+  StartPrefab: {fileID: 7172104240882360034, guid: ae8c293aa84a09341aac8de6632f6f4f,
     type: 3}
-  GoalPrefab: {fileID: 5579293696758320563, guid: 360f66833d455a64980a24b844bffe31,
+  GoalPrefab: {fileID: 7172104240882360034, guid: 639c98b96cb6d0546a168a75823ce2ca,
     type: 3}
   prefabNativeSize: 20
   scalePrefabsToCell: 0
