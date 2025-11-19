@@ -151,7 +151,7 @@ public class LevelGen : MonoBehaviour
                 }
             gridPositions.Add(newPos);
             Instantiate(sewerStraight, newPos, Quaternion.identity);
-
+            
         }
     }
 
