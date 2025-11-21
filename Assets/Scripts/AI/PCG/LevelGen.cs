@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using Unity.AI.Navigation;
 using UnityEngine;
 
 public enum Directions
@@ -77,10 +78,12 @@ public class LevelGen : MonoBehaviour
     // Cardinal dirs for adjacency checks (N,E,S,W)
     private static readonly Vector2Int[] CardinalDirs = new[] { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
 
-    void Start()
+    void Awake()
     {
         if (autoGenerateOnStart)
             Generate();
+            NavMeshSurface surface = GetComponent<NavMeshSurface>();
+            surface.BuildNavMesh();
     }
 
     public void Generate()
@@ -575,5 +578,19 @@ public class LevelGen : MonoBehaviour
         // Validate float sizes
         cellSize = Mathf.Max(0.01f, cellSize);
         prefabNativeSize = Mathf.Max(0.01f, prefabNativeSize);
+    }
+
+    //--- Getters --- // -- James Munnis
+    public Vector3 GetStartPosition()
+    {
+        if (startRoomIndex >= 0 && startRoomIndex < rooms.Count)
+        {
+            Vector2Int center = rooms[startRoomIndex].Center;
+            return new Vector3((center.x + 0.5f) * cellSize, 0f, (center.y + 0.5f) * cellSize);
+        }
+        else
+        {
+            return Vector3.zero;
+        }
     }
 }
