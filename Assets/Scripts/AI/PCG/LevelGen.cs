@@ -1,6 +1,5 @@
-using System;
-using System.Collections;
 using System.Collections.Generic;
+using System;
 using Unity.AI.Navigation;
 using UnityEngine;
 
@@ -44,6 +43,12 @@ public class LevelGen : MonoBehaviour
     public bool avoidIntersections = true;
     public int maxPathAttempts = 6;
 
+    //--- Nesting Logic --- // James
+    [Header("Nests")]
+    [SerializeField] private GameObject nestPrefab;
+    [SerializeField] private int nestCount = 5;
+
+
     [Header("Seed (0 => random)")]
     public int seed = 0;
 
@@ -82,8 +87,28 @@ public class LevelGen : MonoBehaviour
     {
         if (autoGenerateOnStart)
             Generate();
-            NavMeshSurface surface = GetComponent<NavMeshSurface>();
-            surface.BuildNavMesh();
+        // Build NavMesh after generation
+        NavMeshSurface surface = GetComponent<NavMeshSurface>();
+        surface.BuildNavMesh();
+        //Place nests
+        List<int> usedRooms = new List<int>();
+        for (int i = 0; i < nestCount; i++)
+        {
+            //Edge case: not enough rooms to place nests
+            if(rooms.Count <=2)
+                break;
+
+            //Pick a random room that hasn't been used yet, never pick the start or goal room
+            int roomIndex = UnityEngine.Random.Range(1, rooms.Count - 1);
+            while (usedRooms.Contains(roomIndex))
+            {
+                roomIndex = UnityEngine.Random.Range(1, rooms.Count - 1);
+            }
+            usedRooms.Add(roomIndex);
+            Vector2Int roomCenter = rooms[roomIndex].Center;
+            Vector3 nestPos = new Vector3((roomCenter.x + 0.5f) * cellSize, 0f, (roomCenter.y + 0.5f) * cellSize);
+            Instantiate(nestPrefab, nestPos, Quaternion.identity, transform);
+        }
     }
 
     public void Generate()
@@ -131,6 +156,7 @@ public class LevelGen : MonoBehaviour
             if (!overlaps)
             {
                 rooms.Add(new Room(candidate));
+
             }
         }
 
@@ -449,11 +475,11 @@ public class LevelGen : MonoBehaviour
             // Remove previously created children in editor/runtime for re-instantiation.
             for (int i = parentForTiles.childCount - 1; i >= 0; i--)
             {
-                #if UNITY_EDITOR
+#if UNITY_EDITOR
                 DestroyImmediate(parentForTiles.GetChild(i).gameObject);
-                #else
+#else
                 Destroy(parentForTiles.GetChild(i).gameObject);
-                #endif
+#endif
             }
         }
 #endif
@@ -510,7 +536,7 @@ public class LevelGen : MonoBehaviour
         if (floorTiles.Contains(pos + Vector2Int.left)) mask |= 8;
         return mask;
     }
-       
+
     void OnDrawGizmosSelected()
     {
         if (!drawGizmos) return;

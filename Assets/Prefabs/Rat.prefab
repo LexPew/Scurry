@@ -9,10 +9,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1793136148820038279}
-  - component: {fileID: 5757096521859464822}
-  - component: {fileID: 3781741509143264569}
+  - component: {fileID: 1492599409224505660}
   m_Layer: 0
-  m_Name: Bird
+  m_Name: Rat
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -34,28 +33,7 @@ Transform:
   m_Father: {fileID: 0}
   m_RootOrder: 0
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!65 &5757096521859464822
-BoxCollider:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 2073105568459530028}
-  m_Material: {fileID: 0}
-  m_IncludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_ExcludeLayers:
-    serializedVersion: 2
-    m_Bits: 0
-  m_LayerOverridePriority: 0
-  m_IsTrigger: 0
-  m_ProvidesContacts: 0
-  m_Enabled: 0
-  serializedVersion: 3
-  m_Size: {x: 1, y: 1, z: 1}
-  m_Center: {x: 0, y: 0, z: 0}
---- !u!114 &3781741509143264569
+--- !u!114 &1492599409224505660
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -64,11 +42,15 @@ MonoBehaviour:
   m_GameObject: {fileID: 2073105568459530028}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c4dd08d152c8d2150a03b784c9b2bd24, type: 3}
+  m_Script: {fileID: 11500000, guid: 58082aa78c4a46b5b87bd29c7b86c501, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  flockManager: {fileID: 0}
+  swarmManager: {fileID: 0}
+  visualTransform: {fileID: 1935323338548974363}
   maxSpeed: 20
+  rotationSpeed: 6
+  approachRadius: 1
+  wallDetectDistance: 1
 --- !u!1001 &2112503990846584048
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -100,17 +82,17 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 79f4db66b81c989f0b85bd224b154670,
         type: 3}
       propertyPath: m_LocalPosition.x
-      value: 0
+      value: -0
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 79f4db66b81c989f0b85bd224b154670,
         type: 3}
       propertyPath: m_LocalPosition.y
-      value: 0.232
+      value: 0.331
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 79f4db66b81c989f0b85bd224b154670,
         type: 3}
       propertyPath: m_LocalPosition.z
-      value: 0
+      value: -0.531
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 79f4db66b81c989f0b85bd224b154670,
         type: 3}
