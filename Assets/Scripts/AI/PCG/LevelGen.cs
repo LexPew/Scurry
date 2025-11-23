@@ -49,6 +49,9 @@ public class LevelGen : MonoBehaviour
     [SerializeField] private int nestCount = 5;
 
 
+    [Header("Player")]
+    [SerializeField] private GameObject playerPrefab;
+
     [Header("Seed (0 => random)")]
     public int seed = 0;
 
@@ -86,29 +89,41 @@ public class LevelGen : MonoBehaviour
     void Awake()
     {
         if (autoGenerateOnStart)
-            Generate();
-        // Build NavMesh after generation
-        NavMeshSurface surface = GetComponent<NavMeshSurface>();
-        surface.BuildNavMesh();
-        //Place nests
-        List<int> usedRooms = new List<int>();
-        for (int i = 0; i < nestCount; i++)
         {
-            //Edge case: not enough rooms to place nests
-            if(rooms.Count <=2)
-                break;
+            Generate();
 
-            //Pick a random room that hasn't been used yet, never pick the start or goal room
-            int roomIndex = UnityEngine.Random.Range(1, rooms.Count - 1);
-            while (usedRooms.Contains(roomIndex))
+
+            // Build NavMesh after generation
+            NavMeshSurface surface = GetComponent<NavMeshSurface>();
+            surface.BuildNavMesh();
+            //Place nests
+            List<int> usedRooms = new List<int>();
+            for (int i = 0; i < nestCount; i++)
             {
-                roomIndex = UnityEngine.Random.Range(1, rooms.Count - 1);
+                //Edge case: not enough rooms to place nests
+                if (rooms.Count <= 2)
+                    break;
+
+                //Pick a random room that hasn't been used yet, never pick the start or goal room
+                int roomIndex = UnityEngine.Random.Range(1, rooms.Count - 1);
+                while (usedRooms.Contains(roomIndex))
+                {
+                    roomIndex = UnityEngine.Random.Range(1, rooms.Count - 1);
+                }
+                usedRooms.Add(roomIndex);
+                Vector2Int roomCenter = rooms[roomIndex].Center;
+                Vector3 nestPos = new Vector3((roomCenter.x + 0.5f) * cellSize, 0f, (roomCenter.y + 0.5f) * cellSize);
+                Instantiate(nestPrefab, nestPos, Quaternion.identity, transform);
             }
-            usedRooms.Add(roomIndex);
-            Vector2Int roomCenter = rooms[roomIndex].Center;
-            Vector3 nestPos = new Vector3((roomCenter.x + 0.5f) * cellSize, 0f, (roomCenter.y + 0.5f) * cellSize);
-            Instantiate(nestPrefab, nestPos, Quaternion.identity, transform);
+
+            //Place Player at start position
+            if (playerPrefab != null)
+            {
+                Vector3 startPos = GetStartPosition();
+                Instantiate(playerPrefab, startPos + Vector3.up * 2.0f, Quaternion.identity);
+            }
         }
+
     }
 
     public void Generate()

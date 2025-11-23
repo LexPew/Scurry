@@ -11,6 +11,10 @@ public class Player : MonoBehaviour
     public float walkSpeed = 6f;
     public float runSpeed = 12f;
 
+    private float verticalVelocity = 0f;
+    public float gravity = -20f;
+
+    private float currentSpeed = 0f;
     // Crouch Settings
     [Header("Crouch Settings")]
     public float defaultHeight = 2f;
@@ -25,16 +29,15 @@ public class Player : MonoBehaviour
     public float zoomStep = 1f;
 
     // Components
+    [Header("Components")]
     private CharacterController characterController;
     private Camera playerCamera;
+    [SerializeField] private Transform visualTransform;
+
 
     // Booleans
     private bool canMove = true;
 
-    // Movement Direction Vectors
-    private Vector3 moveDirection = Vector3.zero;
-    private Vector3 north = Vector3.forward;
-    private Vector3 east = Vector3.right;
 
     // Start is called before the first frame update
     void Start()
@@ -46,42 +49,77 @@ public class Player : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        // Setting up movement direction to be relative to world north/east
-        Vector3 forward = new Vector3(north.x, 0f, north.z).normalized; //transform.TransformDirection(Vector3.forward);
-        Vector3 right = new Vector3(east.x, 0f, east.z).normalized;
+        if (!canMove) return;
 
-        // Uses the LeftShift as a bool to determine if the player is running
-        bool isRunning = Input.GetKey(KeyCode.LeftShift);
+        // Handle Movement Speed
+        HandleMovementSpeed();
 
-        // Calculate movement direction based on input and whether the player can move
-        float curSpeedX = canMove ? (isRunning ? runSpeed : walkSpeed) * Input.GetAxis("Vertical") : 0;
-        float curSpeedY = canMove ? (isRunning ? runSpeed : walkSpeed) * Input.GetAxis("Horizontal") : 0;
+        // Handle Camera Zoom
+        HandleZoom();
 
-        // Final movement direction vector
-        moveDirection = (forward * curSpeedX) + (right * curSpeedY);
+        // Handle Look Direction
+        HandleLookDirection();
 
-        // Crouching using left ctrl
-        if (Input.GetKey(KeyCode.LeftControl) && canMove) 
+
+        // Move the player
+        characterController.Move(CalculateMoveDirection() * Time.deltaTime);
+
+        // Update camera position
+        playerCamera.transform.position = characterController.transform.position + new Vector3(0, cameraZoom, 0);
+
+
+    }
+
+    Vector3 CalculateMoveDirection()
+    {
+
+        Vector3 forward = Vector3.forward;
+        Vector3 right = Vector3.right;
+
+        //Im using raw for snappier input response
+        float vertical = Input.GetAxisRaw("Vertical");
+        float horizontal = Input.GetAxisRaw("Horizontal");
+        Debug.Log("Vertical Input: " + vertical + " Horizontal Input: " + horizontal);
+        Vector3 move = forward * vertical + right * horizontal;
+
+        // Normalize only if diagonal
+        if (move.sqrMagnitude > 1f)
+            move = move.normalized;
+
+        move *= currentSpeed;
+
+        if (characterController.isGrounded)
         {
-            // Change the height of the character controller
-            characterController.height = crouchHeight;
-
-            // Adjust speeds for crouching
-            walkSpeed = crouchSpeed;
-            runSpeed = crouchSpeed;
-
+            verticalVelocity = -2f; //Small downward force to keep grounded
         }
-
         else
         {
-            // Change the height of the character controller back to default
-            characterController.height = defaultHeight;
-
-            // Reset speeds back to normal
-            walkSpeed = 6f;
-            runSpeed = 12f;
+            verticalVelocity += gravity * Time.deltaTime;
         }
 
+        move.y = verticalVelocity;
+        return move;
+    }
+
+    void HandleMovementSpeed()
+    {
+        // Determine current speed based on input
+        if (Input.GetKey(KeyCode.LeftShift))
+        {
+            currentSpeed = runSpeed;
+        }
+        else if (Input.GetKey(KeyCode.LeftControl))
+        {
+            currentSpeed = crouchSpeed;
+        }
+        else
+        {
+            currentSpeed = walkSpeed;
+        }
+    }
+
+    void HandleZoom()
+    {
         // Camera Zooming with mouse scroll wheel
         float scrollDelta = Input.mouseScrollDelta.y;
         if (Mathf.Abs(scrollDelta) > 0f)
@@ -90,23 +128,23 @@ public class Player : MonoBehaviour
             cameraZoom -= scrollDelta * zoomStep;
             cameraZoom = Mathf.Clamp(cameraZoom, minCameraZoom, maxCameraZoom);
         }
+    }
 
-        // Ray cast to find the point on the ground where the mouse is pointing
-        Ray ray = playerCamera.ScreenPointToRay(Input.mousePosition);
-
-        if (Physics.Raycast(ray, out RaycastHit hitInfo))
+    void HandleLookDirection()
+    {
+        //Use mouse position to world space to find where the player is looking and rotate accordingly
+        Ray mouseRay = playerCamera.ScreenPointToRay(Input.mousePosition);
+        Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
+        if (groundPlane.Raycast(mouseRay, out float rayDistance))
         {
-            Vector3 lookPoint = hitInfo.point;
-            lookPoint.y = transform.position.y; // Keep the y position the same as the player
-            transform.LookAt(lookPoint);
+            Vector3 lookPoint = mouseRay.GetPoint(rayDistance);
+            Vector3 lookDirection = (lookPoint - transform.position).normalized;
+            lookDirection.y = 0; //Keep only horizontal rotation
+            if (lookDirection.sqrMagnitude > 0.01f)
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(lookDirection, Vector3.up);
+                visualTransform.rotation = Quaternion.Slerp(visualTransform.rotation, targetRotation, 15f * Time.deltaTime);
+            }
         }
-
-        // Move the player
-        characterController.Move(moveDirection * Time.deltaTime);
-
-        // Update camera position
-        playerCamera.transform.position = characterController.transform.position + new Vector3(0, cameraZoom, 0);
-
-
     }
 }
