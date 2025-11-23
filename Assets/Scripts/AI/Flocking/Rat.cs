@@ -50,16 +50,15 @@ public class Rat : MonoBehaviour
         //--- Position Update ---
         transform.position = transform.position + velocity * Time.deltaTime;
 
-
-        //--- Visual Update ---
-        if (visualTransform != null && false)
+        //--- Position Validation ---
+        //We check if we are within the NavMesh bounds, if not we snap back to the nearest point on the mesh.
+        NavMeshHit hit;
+        if (!NavMesh.SamplePosition(transform.position, out hit, 5.0f, NavMesh.AllAreas))
         {
-            //Here we keep the rat model on the navmesh by sampling points and moving it there each frame, otherwise follow the main transform
-            if (NavMesh.SamplePosition(transform.position, out NavMeshHit hit, 50.0f, NavMesh.AllAreas))
-            {
-                visualTransform.position = hit.position;
-            }
+            NavMesh.SamplePosition(transform.position, out hit, 100.0f, NavMesh.AllAreas);
+            transform.position = hit.position;
         }
+ 
     }
 
 

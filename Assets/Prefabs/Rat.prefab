@@ -50,7 +50,7 @@ MonoBehaviour:
   maxSpeed: 20
   rotationSpeed: 6
   approachRadius: 1
-  wallDetectDistance: 1
+  wallDetectDistance: 2
 --- !u!1001 &2112503990846584048
 PrefabInstance:
   m_ObjectHideFlags: 0
