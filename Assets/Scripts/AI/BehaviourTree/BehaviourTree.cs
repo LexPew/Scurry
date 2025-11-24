@@ -1,56 +1,93 @@
 using System.Collections;
 using System.Collections.Generic;
-using System.Text;
-using System.Linq;
+using System.Runtime.InteropServices.WindowsRuntime;
 using UnityEngine;
-using UnityEngine.Rendering;
 
-namespace AI.BehaviourTree
+public class BehaviourTree : MonoBehaviour
 {
-    public class Node
-{
-    public enum State
-        {
-            Success,
-            Failure,
-            Running
-        };
+    private BTNode tree;
+    private Player player;
 
-        public readonly string name;
-        public readonly List<Node> children = new List<Node>();
-        protected int currentChild;
-
-
-
-
-        public Node(string name = "Node")
-        {
-            this.name = name;
-        }
-
-        public void AddChild(Node child)
-        {
-            children.Add(child);
-        }
-
-        public virtual State Process() => children[currentChild].Process();
-
-        public virtual void Reset()
-        {
-            currentChild = 0;
-            foreach (var child in children)
-            {
-                child.Reset();
-            }
-        }
-
-
-
+    void Start()
+    {
+        player = FindObjectOfType<Player>();
+        tree = new Sequence(
+            new PrintAction("Hello",player),
+            new PrintAction("World",player)
+        );
     }
 
+    void Update()
+    {
+        tree.Execute();
+    }
+}
 
+public abstract class BTNode // Base Behaviour Tree Node
+{
+    public abstract bool Execute();
+}
 
+public class Sequence : BTNode // Sequencer Node
+{
+    private List<BTNode> children = new List<BTNode>();
 
+    public Sequence(params BTNode[] nodes)
+    {
+        children.AddRange(nodes);
+    }
 
+    public override bool Execute()
+    {
+        foreach (var child in children)
+        {
+            if (!child.Execute())
+                return false;
+        }
+        return true;
+    }
+}
+
+public class Selector : BTNode // Selector Node
+{
+    private List<BTNode> children = new List<BTNode>();
+
+    public Selector(params BTNode[] nodes)
+    {
+        children.AddRange(nodes);
+    }
+
+    public override bool Execute()
+    {
+        foreach (var child in children)
+        {
+            if (child.Execute())
+                return true;
+        }
+        return false;
+    }
+}
+
+public class PrintAction : BTNode // A leaf node, prints a message
+{
+    private string message;
+    private Player player;
+
+    public PrintAction(string msg, Player playerRef)
+    {
+        message = msg;
+        player = playerRef;
+    }
+
+    public override bool Execute()
+    {
+        if (player != null && player.HasInteracted)
+        {
+            Debug.Log(message);
+            return true; // Always succeeds
+        }
+        return false;
+    }
 
 }
+

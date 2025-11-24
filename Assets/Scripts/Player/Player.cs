@@ -7,6 +7,9 @@ using UnityEngine.InputSystem;
 
 public class Player : MonoBehaviour
 {
+
+    public bool HasInteracted { get; private set; }
+
     // Movement Settings
     [Header("Movement Settings")]
     public float walkSpeed = 6f;
@@ -69,6 +72,7 @@ public class Player : MonoBehaviour
         // Update camera position
         playerCamera.transform.position = characterController.transform.position + new Vector3(0, cameraZoom, 0);
 
+        HasInteracted = Input.GetKeyDown(KeyCode.E);
 
     }
 
