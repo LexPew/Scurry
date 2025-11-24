@@ -9,7 +9,6 @@ public class Rat : MonoBehaviour
     [SerializeField] private Transform visualTransform;
     [SerializeField] private float maxSpeed = 22.0f;        // Slightly lower for realism
     [SerializeField] private float rotationSpeed = 9.0f;    // Allows smoother turning
-    [SerializeField] private float approachRadius = 1.0f;
     [SerializeField] private float wallDetectDistance = 10.0f;
     private Vector3 velocity;
 

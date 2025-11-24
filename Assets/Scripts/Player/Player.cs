@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.InputSystem;
 
 public class Player : MonoBehaviour
 {
@@ -33,6 +34,7 @@ public class Player : MonoBehaviour
     private CharacterController characterController;
     private Camera playerCamera;
     [SerializeField] private Transform visualTransform;
+    [SerializeField] private PlayerInput playerInput;
 
 
     // Booleans
@@ -77,8 +79,8 @@ public class Player : MonoBehaviour
         Vector3 right = Vector3.right;
 
         //Im using raw for snappier input response
-        float vertical = Input.GetAxisRaw("Vertical");
-        float horizontal = Input.GetAxisRaw("Horizontal");
+        float vertical = playerInput.actions["Move"].ReadValue<Vector2>().y;
+        float horizontal = playerInput.actions["Move"].ReadValue<Vector2>().x;
         Debug.Log("Vertical Input: " + vertical + " Horizontal Input: " + horizontal);
         Vector3 move = forward * vertical + right * horizontal;
 
@@ -104,11 +106,11 @@ public class Player : MonoBehaviour
     void HandleMovementSpeed()
     {
         // Determine current speed based on input
-        if (Input.GetKey(KeyCode.LeftShift))
+        if (playerInput.actions["Sprint"].IsPressed())
         {
             currentSpeed = runSpeed;
         }
-        else if (Input.GetKey(KeyCode.LeftControl))
+        else if (playerInput.actions["Crouch"].IsPressed())
         {
             currentSpeed = crouchSpeed;
         }
@@ -132,19 +134,35 @@ public class Player : MonoBehaviour
 
     void HandleLookDirection()
     {
-        //Use mouse position to world space to find where the player is looking and rotate accordingly
-        Ray mouseRay = playerCamera.ScreenPointToRay(Input.mousePosition);
-        Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
-        if (groundPlane.Raycast(mouseRay, out float rayDistance))
+        //Check if we are using a mouse or gamepad
+        if (playerInput.currentControlScheme == "Gamepad")
         {
-            Vector3 lookPoint = mouseRay.GetPoint(rayDistance);
-            Vector3 lookDirection = (lookPoint - transform.position).normalized;
-            lookDirection.y = 0; //Keep only horizontal rotation
-            if (lookDirection.sqrMagnitude > 0.01f)
+            Vector2 lookInput = playerInput.actions["Look"].ReadValue<Vector2>();
+            if (lookInput.sqrMagnitude > 0.01f)
             {
+                Vector3 lookDirection = new Vector3(lookInput.x, 0, lookInput.y).normalized;
                 Quaternion targetRotation = Quaternion.LookRotation(lookDirection, Vector3.up);
                 visualTransform.rotation = Quaternion.Slerp(visualTransform.rotation, targetRotation, 15f * Time.deltaTime);
             }
+
         }
+        else
+        {
+            //Use mouse position to world space to find where the player is looking and rotate accordingly
+            Ray mouseRay = playerCamera.ScreenPointToRay(Input.mousePosition);
+            Plane groundPlane = new Plane(Vector3.up, Vector3.zero);
+            if (groundPlane.Raycast(mouseRay, out float rayDistance))
+            {
+                Vector3 lookPoint = mouseRay.GetPoint(rayDistance);
+                Vector3 lookDirection = (lookPoint - transform.position).normalized;
+                lookDirection.y = 0; //Keep only horizontal rotation
+                if (lookDirection.sqrMagnitude > 0.01f)
+                {
+                    Quaternion targetRotation = Quaternion.LookRotation(lookDirection, Vector3.up);
+                    visualTransform.rotation = Quaternion.Slerp(visualTransform.rotation, targetRotation, 15f * Time.deltaTime);
+                }
+            }
+        }
+
     }
 }
