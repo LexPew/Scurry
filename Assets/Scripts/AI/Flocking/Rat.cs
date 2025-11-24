@@ -28,10 +28,10 @@ public class Rat : MonoBehaviour
         Vector3 wallAvoidanceForce = WallAvoidance();
         //--- Steering and Movement ---
         Vector3 steerForce = Vector3.zero;
-        steerForce += cohesionForce * swarmManager.cohesionStrength;
-        steerForce += separationForce * swarmManager.separationStrength;
-        steerForce += alignForce * swarmManager.alignStrength;
-        steerForce += targetForce * swarmManager.targetStrength;
+        steerForce += cohesionForce * swarmManager.currentBehaviour.cohesionStrength;
+        steerForce += separationForce * swarmManager.currentBehaviour.separationStrength;
+        steerForce += alignForce * swarmManager.currentBehaviour.alignStrength;
+        steerForce += targetForce * swarmManager.currentBehaviour.targetStrength;
         //Wall avoidance is absolute to prevent collisions so we must multiply it by the combined magnitude of the other forces to keep balance
         float combinedForceMagnitude = steerForce.magnitude;
         steerForce += wallAvoidanceForce * (combinedForceMagnitude * 6.0f);
@@ -70,7 +70,7 @@ public class Rat : MonoBehaviour
         foreach (Rat rat in swarmManager.rats)
         {
             if (rat != this &&
-                Vector3.Distance(transform.position, rat.transform.position) < swarmManager.perceptionRadius)
+                Vector3.Distance(transform.position, rat.transform.position) < swarmManager.currentBehaviour.perceptionRadius)
             {
                 closeBoidCount++;
                 sum += rat.transform.position;
@@ -92,7 +92,7 @@ public class Rat : MonoBehaviour
         {
             //Check if we are not comparing to ourselves and if the rat is within separation distance
             if (rat != this &&
-                Vector3.Distance(transform.position, rat.transform.position) < swarmManager.seperationDistance)
+                Vector3.Distance(transform.position, rat.transform.position) < swarmManager.currentBehaviour.seperationDistance)
             {
                 //Update the close boid counter and then calculate the difference vector, normalize it and weight it by distance.
                 //Example: If we have our boid at (0,0,0) and another at (2,0,0), the difference vector is (-2,0,0).
@@ -119,7 +119,7 @@ public class Rat : MonoBehaviour
         foreach (Rat rat in swarmManager.rats)
         {
             if (rat != this &&
-                Vector3.Distance(transform.position, rat.transform.position) < swarmManager.alignDistance)
+                Vector3.Distance(transform.position, rat.transform.position) < swarmManager.currentBehaviour.alignDistance)
             {
                 closeBoidCount++;
                 //Simply add all the velocities of nearby boids together and then in the end we will average them.

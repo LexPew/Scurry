@@ -11,6 +11,7 @@ public class SwarmAgent : MonoBehaviour
     private NavMeshAgent navMeshAgent;
 
     private Vector3 targetPosition;
+    [SerializeField]private Transform targetTransform;
 
     void Awake()
     {
@@ -20,15 +21,29 @@ public class SwarmAgent : MonoBehaviour
     void Start()
     {
         //Initialize target position to current position
-        targetPosition = transform.position;
+        if (targetTransform != null)
+            targetPosition = targetTransform.position;
+        else
+        {
 
+            targetPosition = transform.position;
+        }
+
+    }
+
+    void Update()
+    {
+                if (targetTransform != null)
+            targetPosition = targetTransform.position;
+        //Continuously update destination to target position
+        navMeshAgent.SetDestination(targetPosition);
     }
 
     //Sets a new target position for the swarm agent to move towards
     public void SetTargetPosition(Vector3 target)
     {
-        targetPosition = target;
-        navMeshAgent.SetDestination(targetPosition);
+        //targetPosition = target;
+        //navMeshAgent.SetDestination(targetPosition);
     }
 
 }

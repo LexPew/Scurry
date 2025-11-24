@@ -48,14 +48,11 @@ MonoBehaviour:
     type: 3}
   rats: []
   swarmRoamRadius: 40
-  ratCount: 70
-  cohesionStrength: 1
-  separationStrength: 5.41
-  alignStrength: 3
-  targetStrength: 25
-  perceptionRadius: 14
-  seperationDistance: 2.83
-  alignDistance: 12
+  ratCount: 100
+  currentBehaviour: {fileID: 11400000, guid: 305684b4b386ae9e58305122f7792bfc, type: 2}
+  defaultBehaviour: {fileID: 11400000, guid: f9608a3160aa2f485b331409a687ffef, type: 2}
+  chaseBehaviour: {fileID: 11400000, guid: 3d105390ef558eae4906853779296248, type: 2}
+  fleeBehaviour: {fileID: 11400000, guid: 305684b4b386ae9e58305122f7792bfc, type: 2}
   swarmAgentPrefab: {fileID: 3294068161598743042, guid: 21e42371294067ea98625e3246903ca6,
     type: 3}
   swarmAgent: {fileID: 0}
