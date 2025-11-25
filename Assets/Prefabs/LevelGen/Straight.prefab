@@ -43,7 +43,7 @@ GameObject:
   m_Component:
   - component: {fileID: 4113044689792585868}
   m_Layer: 0
-  m_Name: SewerSegment_0101_North_South
+  m_Name: Straight
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

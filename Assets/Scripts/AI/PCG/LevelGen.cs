@@ -63,6 +63,10 @@ public class LevelGen : MonoBehaviour
     [Header("Prefabs (index by connection bitmask: N=1, E=2, S=4, W=8)")]
     [Tooltip("Provide a prefab for each connection mask (0..15). If a slot is empty, DefaultTilePrefab will be used.")]
     public GameObject[] tilePrefabsByConnection = new GameObject[16];
+    //Better System for prefabs 5 instead of 16
+    [Header("Prefabs (index by type)")]
+    [Tooltip("Provide a prefab for each tile type (0=straight,1=corner,2=tjunction,3=crossroad,4=deadend). If a slot is empty, DefaultTilePrefab will be used.")]
+    public GameObject[] tilePrefabsByType = new GameObject[5]; // 0=straight,1=corner,2=tjunction,3=crossroad,4=deadend ALL PREFABS FACE Z FORWARD BY DEFAULT
     public GameObject DefaultTilePrefab;
     public GameObject StartPrefab;
     public GameObject GoalPrefab;
@@ -502,7 +506,8 @@ public class LevelGen : MonoBehaviour
         foreach (var v in floorTiles)
         {
             GameObject prefab = null;
-
+            Vector3 worldPos = new Vector3((v.x + 0.5f) * cellSize, 0f, (v.y + 0.5f) * cellSize);
+            Quaternion rotation = Quaternion.identity;
             // If this tile is the start or goal room, prefer those prefabs when assigned.
             int roomIndex = rooms.FindIndex(r => r.Center == v);
             if (roomIndex >= 0)
@@ -513,20 +518,106 @@ public class LevelGen : MonoBehaviour
                     prefab = GoalPrefab;
             }
 
+            //New system for prefabs ---James Munnis---
             if (prefab == null)
             {
-                int mask = GetConnectionMask(v);
-                if (tilePrefabsByConnection != null && mask >= 0 && mask < tilePrefabsByConnection.Length && tilePrefabsByConnection[mask] != null)
-                    prefab = tilePrefabsByConnection[mask];
-                else
-                    prefab = DefaultTilePrefab;
-            }
+                //This is a simple system based on number of connections
+                int roomConnections = 0;
+                //Loop through each direction around the tile and check for connections
+                foreach (var dir in CardinalDirs)
+                {
+                    //Floor tiles hashset contains all occupied tiles (rooms + corridors)
+                    if (floorTiles.Contains(v + dir))
+                    {
+                        roomConnections++;
+                    }
+                }
 
+                //Use the room connections to determine the prefab type and also rotation for corners, t-junctions, and deadends
+                if (tilePrefabsByType != null)
+                {
+
+                    //Deadend as there is only one connection
+                    if (roomConnections == 1)
+                    {
+                        prefab = tilePrefabsByType[4];
+                    }
+                    //Straight connecting two rooms
+                    else if (roomConnections == 2)
+                    {
+                        //Check if it's a corner or straight
+                        int mask = GetConnectionMask(v);
+                        if (mask == 3 || mask == 6 || mask == 9 || mask == 12) //Corners: NE, ES, SW, WN
+                        {
+                            prefab = tilePrefabsByType[1]; //Corner
+                            //Determine rotation based on connection mask
+                            if (mask == 3) //North And East
+                            {
+                                rotation = Quaternion.Euler(0f, -90f, 0f);
+                            }
+                            else if (mask == 6) //East And South
+                            {
+                                rotation = Quaternion.Euler(0f, 0f, 0f);
+                            }
+                            else if (mask == 9) //South And West
+                            {
+                                rotation = Quaternion.Euler(0f, -180, 0f);
+                            }
+                            else if (mask == 12) //West And North
+                            {
+                                rotation = Quaternion.Euler(0f, 90, 0f);
+                            }
+                        }
+                        //Straight connection
+                        else
+                        {
+                            prefab = tilePrefabsByType[0]; //Straight by default
+                                                           //Figure out what rotation by default the prefab should face north forward 
+                                                           //Determine rotation by default the prefabs open ends are z axis
+
+                            if (mask == 15 - 5) //EW 0101
+                            {
+                                rotation = Quaternion.Euler(0f, 90f, 0f);
+                            }
+                        }
+                    }
+                    //T Section joining three rooms
+                    else if (roomConnections == 3)
+                    {
+                        prefab = tilePrefabsByType[2];
+                        //Determine rotation based on missing connection
+                        int mask = GetConnectionMask(v);
+                        if (mask == 7) //Missing West 1110
+                        {
+                            rotation = Quaternion.Euler(0f, -90f, 0f);
+                        }
+                        else if (mask == 11) //Missing South 1011
+                        {
+                            rotation = Quaternion.Euler(0f, -180f, 0f);
+                        }
+                        else if (mask == 13) //Missing East
+                        {
+                            rotation = Quaternion.Euler(0f, 90, 0f);
+                        }
+                        else if (mask == 14) //Missing North
+                        {
+                            rotation = Quaternion.Euler(0f, 0, 0f);
+                        }
+                    }
+                    else if (roomConnections == 4)
+                    {
+                        prefab = tilePrefabsByType[3]; //Crossroad
+                    }
+
+
+                }
+
+
+            }
+            //Instantiate the prefab if assigned
             if (prefab != null)
             {
-                // place at the centre of the grid cell scaled by cellSize
-                var worldPos = new Vector3((v.x + 0.5f) * cellSize, 0f, (v.y + 0.5f) * cellSize);
-                var go = Instantiate(prefab, worldPos, Quaternion.identity, parentForTiles);
+                var go = Instantiate(prefab, worldPos, rotation, parentForTiles);
 
                 // optionally scale the prefab to match the configured cell size
                 if (scalePrefabsToCell && prefabNativeSize > 0f)
@@ -545,10 +636,10 @@ public class LevelGen : MonoBehaviour
     {
         int mask = 0;
         // North = 1, East = 2, South = 4, West = 8
-        if (floorTiles.Contains(pos + Vector2Int.up)) mask |= 1;
-        if (floorTiles.Contains(pos + Vector2Int.right)) mask |= 2;
-        if (floorTiles.Contains(pos + Vector2Int.down)) mask |= 4;
-        if (floorTiles.Contains(pos + Vector2Int.left)) mask |= 8;
+        if (floorTiles.Contains(pos + Vector2Int.up)) mask |= 1; //This returns a bitmask based on connections, this one for example checks north and returns 1 if connected aka fthe bits 0001
+        if (floorTiles.Contains(pos + Vector2Int.right)) mask |= 2; //Bits 0010
+        if (floorTiles.Contains(pos + Vector2Int.down)) mask |= 4; //Bits 0100
+        if (floorTiles.Contains(pos + Vector2Int.left)) mask |= 8; //Bits 1000
         return mask;
     }
 

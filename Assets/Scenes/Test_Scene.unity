@@ -169,7 +169,7 @@ MonoBehaviour:
   nestCount: 1
   playerPrefab: {fileID: 6470280735601303396, guid: 63fb4259707ac8e4eb2e4d1f6da8a96d,
     type: 3}
-  seed: 0
+  seed: 1
   rooms: []
   tilePrefabsByConnection:
   - {fileID: 7172104240882360034, guid: 43a47a5a2ec857f4f9421b3da31211a6, type: 3}
@@ -188,6 +188,12 @@ MonoBehaviour:
   - {fileID: 7172104240882360034, guid: 94df7704589705b448e1e4500347dc1c, type: 3}
   - {fileID: 7172104240882360034, guid: 2e150f7811d52c24eb572e56f253ed05, type: 3}
   - {fileID: 7172104240882360034, guid: b010610e1889ef74e9f9a88f6ba1cb9f, type: 3}
+  tilePrefabsByType:
+  - {fileID: 7172104240882360034, guid: 132e270d1f506cf858b7238020e1ce65, type: 3}
+  - {fileID: 7172104240882360034, guid: 94edebbbd0ff9f6469748170babedd43, type: 3}
+  - {fileID: 7172104240882360034, guid: 2e150f7811d52c24eb572e56f253ed05, type: 3}
+  - {fileID: 7172104240882360034, guid: b010610e1889ef74e9f9a88f6ba1cb9f, type: 3}
+  - {fileID: 7172104240882360034, guid: 43a47a5a2ec857f4f9421b3da31211a6, type: 3}
   DefaultTilePrefab: {fileID: 7172104240882360034, guid: 43a47a5a2ec857f4f9421b3da31211a6,
     type: 3}
   StartPrefab: {fileID: 7172104240882360034, guid: ae8c293aa84a09341aac8de6632f6f4f,
