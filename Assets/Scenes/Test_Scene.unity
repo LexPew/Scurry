@@ -157,19 +157,19 @@ MonoBehaviour:
   gridWidth: 30
   gridHeight: 30
   cellSize: 20
-  numRooms: 10
+  numRooms: 30
   maxPlacementAttempts: 250
-  roomSpacing: 4
+  roomSpacing: 10
   minTurnSpacing: 4
   zigzagChance: 0.468
-  avoidIntersections: 1
-  maxPathAttempts: 6
+  avoidIntersections: 0
+  maxPathAttempts: 2
   nestPrefab: {fileID: 3037427851295404658, guid: bd6ccda08ff009d53b20992a9aec1fad,
     type: 3}
   nestCount: 1
   playerPrefab: {fileID: 6470280735601303396, guid: 63fb4259707ac8e4eb2e4d1f6da8a96d,
     type: 3}
-  seed: 1
+  seed: 0
   rooms: []
   tilePrefabsByConnection:
   - {fileID: 7172104240882360034, guid: 43a47a5a2ec857f4f9421b3da31211a6, type: 3}
@@ -193,7 +193,7 @@ MonoBehaviour:
   - {fileID: 7172104240882360034, guid: 94edebbbd0ff9f6469748170babedd43, type: 3}
   - {fileID: 7172104240882360034, guid: 2e150f7811d52c24eb572e56f253ed05, type: 3}
   - {fileID: 7172104240882360034, guid: b010610e1889ef74e9f9a88f6ba1cb9f, type: 3}
-  - {fileID: 7172104240882360034, guid: 43a47a5a2ec857f4f9421b3da31211a6, type: 3}
+  - {fileID: 7172104240882360034, guid: 522b20965af46f990b3b74136534e7ba, type: 3}
   DefaultTilePrefab: {fileID: 7172104240882360034, guid: 43a47a5a2ec857f4f9421b3da31211a6,
     type: 3}
   StartPrefab: {fileID: 7172104240882360034, guid: ae8c293aa84a09341aac8de6632f6f4f,

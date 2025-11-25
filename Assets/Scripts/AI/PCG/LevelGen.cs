@@ -3,6 +3,15 @@ using System;
 using Unity.AI.Navigation;
 using UnityEngine;
 
+[Serializable]
+public struct Room
+{
+    // Single–cell room wrapper retained for potential future expansion.
+    public RectInt rect;
+    public Vector2Int Center => new Vector2Int(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    public Room(RectInt r) { rect = r; }
+}
+// Cardinal directions.
 public enum Directions
 {
     North,
@@ -10,84 +19,153 @@ public enum Directions
     South,
     West
 }
-
-[Serializable]
-public struct Room
+// Bitmask values for 4‑way cardinal connectivity.
+enum DirectionBitMask
 {
-    // Rooms are now one grid cell (1x1 RectInt). Keep RectInt for minimal API changes.
-    public RectInt rect;
-    public Vector2Int Center => new Vector2Int(rect.x + rect.width / 2, rect.y + rect.height / 2);
+    North = 1,
+    East = 2,
+    South = 4,
+    West = 8
+}
 
-    public Room(RectInt r)
-    {
-        rect = r;
-    }
+// Sewer tile topology classification.
+enum TileType
+{
+    Straight = 0,
+    Corner = 1,
+    TJunction = 2,
+    Crossroad = 3,
+    Deadend = 4,
+    Error = -1
 }
 
 public class LevelGen : MonoBehaviour
 {
-    [Header("Grid")]
+    // -------------------------------------------------------------
+    //  ROOM + GRID CONFIGURATION
+    // -------------------------------------------------------------
+    [Header("Grid Settings")]
+    [Tooltip("Logical grid dimensions in tiles.")]
     public int gridWidth = 100;
     public int gridHeight = 60;
-    public float cellSize = 20f; // world units per grid cell (prefabs are currently 20 units square)
 
-    [Header("Rooms")]
+    [Tooltip("World units per logical tile.")]
+    public float cellSize = 20f;
+
+
+    // -------------------------------------------------------------
+    //  ROOM GENERATION
+    // -------------------------------------------------------------
+    [Header("Room Generation")]
+    [Tooltip("Total number of rooms placed in the grid.")]
     public int numRooms = 12;
-    public int maxPlacementAttempts = 250;
-    public int roomSpacing = 1; // Chebyshev distance between single-tile rooms
 
-    [Header("Corridors")]
-    public int minTurnSpacing = 3; // minimum straight length between turns
+    [Tooltip("Maximum random placement attempts before fallback rules apply.")]
+    public int maxPlacementAttempts = 250;
+
+    [Tooltip("Minimum Chebyshev distance between room centers.")]
+    public int roomSpacing = 1;
+
+
+    // -------------------------------------------------------------
+    //  CORRIDOR GENERATION
+    // -------------------------------------------------------------
+    [Header("Corridor Generation")]
+    [Tooltip("Minimum straight run before allowing a turn in path.")]
+    public int minTurnSpacing = 3;
+
     [Range(0f, 1f)]
-    public float zigzagChance = 0.45f; // chance to introduce extra turns
+    [Tooltip("Chance of generating an extra bend in corridor paths.")]
+    public float zigzagChance = 0.45f;
+
+    [Tooltip("If true, corridor attempts avoid adjacency & overlap.")]
     public bool avoidIntersections = true;
+
+    [Tooltip("Attempts per corridor link before accepting overlap.")]
     public int maxPathAttempts = 6;
 
-    //--- Nesting Logic --- // James
-    [Header("Nests")]
+
+    // -------------------------------------------------------------
+    //  ENTITY SPAWNING (Nests, Player)
+    // -------------------------------------------------------------
+    [Header("Spawning")]
     [SerializeField] private GameObject nestPrefab;
-    [SerializeField] private int nestCount = 5;
+    [SerializeField]
+    [Tooltip("How many nests to place in non-start rooms.")]
+    private int nestCount = 5;
+
+    [SerializeField]
+    [Tooltip("Player prefab that spawns at the start room.")]
+    private GameObject playerPrefab;
 
 
-    [Header("Player")]
-    [SerializeField] private GameObject playerPrefab;
-
-    [Header("Seed (0 => random)")]
+    // -------------------------------------------------------------
+    //  SEEDING
+    // -------------------------------------------------------------
+    [Header("Random Seed (0 = fully random)")]
     public int seed = 0;
 
-    // Results
-    public List<Room> rooms = new List<Room>();
-    public HashSet<Vector2Int> corridorTiles = new HashSet<Vector2Int>();
-    public HashSet<Vector2Int> floorTiles = new HashSet<Vector2Int>(); // now represents all occupied sewer grid tiles
 
-    [Header("Prefabs (index by connection bitmask: N=1, E=2, S=4, W=8)")]
-    [Tooltip("Provide a prefab for each connection mask (0..15). If a slot is empty, DefaultTilePrefab will be used.")]
-    public GameObject[] tilePrefabsByConnection = new GameObject[16];
-    //Better System for prefabs 5 instead of 16
-    [Header("Prefabs (index by type)")]
-    [Tooltip("Provide a prefab for each tile type (0=straight,1=corner,2=tjunction,3=crossroad,4=deadend). If a slot is empty, DefaultTilePrefab will be used.")]
-    public GameObject[] tilePrefabsByType = new GameObject[5]; // 0=straight,1=corner,2=tjunction,3=crossroad,4=deadend ALL PREFABS FACE Z FORWARD BY DEFAULT
-    public GameObject DefaultTilePrefab;
+    // -------------------------------------------------------------
+    //  GENERATED OUTPUT (Readonly in Inspector)
+    // -------------------------------------------------------------
+    [Header("Generated Data (Runtime)")]
+    [Tooltip("Room containers (single-tile rooms).")]
+    public List<Room> rooms = new List<Room>();
+
+    [Tooltip("Tiles belonging to corridors only.")]
+    public HashSet<Vector2Int> corridorTiles = new HashSet<Vector2Int>();
+
+    [Tooltip("Union of room + corridor tiles.")]
+    public HashSet<Vector2Int> floorTiles = new HashSet<Vector2Int>();
+
+
+    // -------------------------------------------------------------
+    //  PREFAB MAPPING
+    // -------------------------------------------------------------
+    [Header("Tile Prefabs")]
+    [Tooltip("Index order: 0=Straight, 1=Corner, 2=T-Junction, 3=Crossroad, 4=Deadend")]
+    public GameObject[] tilePrefabsByType = new GameObject[5];
+
+    [Tooltip("Optional override for start room tile.")]
     public GameObject StartPrefab;
+
+    [Tooltip("Optional override for goal room tile.")]
     public GameObject GoalPrefab;
 
-    [Tooltip("Native square size (in world units) that prefabs were authored at. Used to auto-scale prefabs to `cellSize`.")]
+    [Tooltip("Native authored prefab unit size for auto-scaling to cellSize.")]
     public float prefabNativeSize = 20f;
+
+    [Tooltip("Automatically scale prefabs to fill each grid cell.")]
     public bool scalePrefabsToCell = true;
 
-    [Header("Debug / Instantiation")]
-    public Transform parentForTiles;
-    public bool drawGizmos = true;
-    public bool autoGenerateOnStart = true;
-    public bool instantiateOnGenerate = true; // instantiate generated tiles automatically
 
-    // Start and Goal indices
-    public int startRoomIndex = -1;
-    public int goalRoomIndex = -1;
+    // -------------------------------------------------------------
+    //  DEBUG / EXECUTION
+    // -------------------------------------------------------------
+    [Header("Debugging & Generation Control")]
+    [Tooltip("Generated tile parent for organizational hierarchy.")]
+    public Transform parentForTiles;
+
+    [Tooltip("Draw gizmos for rooms, corridors, and floor tiles.")]
+    public bool drawGizmos = true;
+
+    [Tooltip("Automatically generate level on Awake().")]
+    public bool autoGenerateOnStart = true;
+
+    [Tooltip("Instantiate tile prefabs after generation.")]
+    public bool instantiateOnGenerate = true;
+
+
+    // -------------------------------------------------------------
+    //  INTERNAL STATE
+    // -------------------------------------------------------------
+    [HideInInspector] public int startRoomIndex = -1;
+    [HideInInspector] public int goalRoomIndex = -1;
 
     private System.Random rng;
 
-    // Cardinal dirs for adjacency checks (N,E,S,W)
+    // 4‑way cardinal offsets.
     private static readonly Vector2Int[] CardinalDirs = new[] { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
 
     void Awake()
@@ -95,41 +173,34 @@ public class LevelGen : MonoBehaviour
         if (autoGenerateOnStart)
         {
             Generate();
-
-
-            // Build NavMesh after generation
             NavMeshSurface surface = GetComponent<NavMeshSurface>();
             surface.BuildNavMesh();
-            //Place nests
+
+            // Nest placement in non-start/goal rooms; avoids duplicates.
             List<int> usedRooms = new List<int>();
             for (int i = 0; i < nestCount; i++)
             {
-                //Edge case: not enough rooms to place nests
-                if (rooms.Count <= 2)
-                    break;
-
-                //Pick a random room that hasn't been used yet, never pick the start or goal room
+                if (rooms.Count <= 2) break;
                 int roomIndex = UnityEngine.Random.Range(1, rooms.Count - 1);
                 while (usedRooms.Contains(roomIndex))
-                {
                     roomIndex = UnityEngine.Random.Range(1, rooms.Count - 1);
-                }
+
                 usedRooms.Add(roomIndex);
                 Vector2Int roomCenter = rooms[roomIndex].Center;
                 Vector3 nestPos = new Vector3((roomCenter.x + 0.5f) * cellSize, 0f, (roomCenter.y + 0.5f) * cellSize);
                 Instantiate(nestPrefab, nestPos, Quaternion.identity, transform);
             }
 
-            //Place Player at start position
+            // Player spawn over start tile.
             if (playerPrefab != null)
             {
                 Vector3 startPos = GetStartPosition();
                 Instantiate(playerPrefab, startPos + Vector3.up * 2.0f, Quaternion.identity);
             }
         }
-
     }
 
+    // Full pipeline: clear, regenerate, connect, stamp, instantiate.
     public void Generate()
     {
         rng = seed == 0 ? new System.Random() : new System.Random(seed);
@@ -143,14 +214,13 @@ public class LevelGen : MonoBehaviour
         ConnectRooms();
         StampRoomsAndCorridorsToFloor();
 
-        // instantiate tiles automatically if requested
         if (instantiateOnGenerate)
             InstantiatePrefabs();
     }
 
+    // Places single-cell rooms subject to spacing, then fallback loose fill if insufficient.
     void PlaceRoomsAsSingleTiles()
     {
-        // Rooms are placed as 1x1 rectangles (crossroads). Use roomSpacing to avoid clustering if desired.
         int attempts = 0;
         while (rooms.Count < numRooms && attempts < maxPlacementAttempts)
         {
@@ -162,7 +232,6 @@ public class LevelGen : MonoBehaviour
             bool overlaps = false;
             foreach (var r in rooms)
             {
-                // Chebyshev distance check (includes diagonals) - if within roomSpacing then reject
                 int dx = Math.Abs(r.rect.x - candidate.x);
                 int dy = Math.Abs(r.rect.y - candidate.y);
                 if (Math.Max(dx, dy) <= roomSpacing)
@@ -173,13 +242,10 @@ public class LevelGen : MonoBehaviour
             }
 
             if (!overlaps)
-            {
                 rooms.Add(new Room(candidate));
-
-            }
         }
 
-        // If not enough rooms, try a looser placement (best-effort)
+        // Relaxed placement fallback.
         if (rooms.Count < numRooms)
         {
             int tries = 0;
@@ -203,11 +269,10 @@ public class LevelGen : MonoBehaviour
         }
     }
 
+    // Select two rooms with maximal Manhattan separation for start/goal.
     void PickStartAndGoal()
     {
         if (rooms.Count == 0) return;
-
-        // Pick two rooms that are farthest apart (Manhattan)
         int bestA = 0, bestB = 0;
         int bestDist = -1;
         for (int i = 0; i < rooms.Count; i++)
@@ -223,14 +288,13 @@ public class LevelGen : MonoBehaviour
                 }
             }
         }
-
         startRoomIndex = bestA;
         goalRoomIndex = bestB;
     }
 
+    // Attempts directional nearest-neighbor corridor links without duplication.
     void ConnectRooms()
     {
-        // Attempt connections per-room per-cardinal direction to nearest neighbor.
         var connectedPairs = new HashSet<(int, int)>();
         for (int i = 0; i < rooms.Count; i++)
         {
@@ -242,9 +306,7 @@ public class LevelGen : MonoBehaviour
                     var pair = i < j ? (i, j) : (j, i);
                     if (!connectedPairs.Contains(pair))
                     {
-                        // Create corridor between rooms[i] and rooms[j]
                         TryCreateCorridorBetweenRooms(i, j);
-                        // Mark as attempted
                         connectedPairs.Add(pair);
                     }
                 }
@@ -252,6 +314,7 @@ public class LevelGen : MonoBehaviour
         }
     }
 
+    // Finds closest room strictly in a given cardinal half-space.
     int FindNearestInDirection(int srcIndex, Directions dir)
     {
         Vector2Int center = rooms[srcIndex].Center;
@@ -273,7 +336,6 @@ public class LevelGen : MonoBehaviour
                 Directions.West => dx < 0,
                 _ => false
             };
-
             if (!candidate) continue;
 
             int dist = Math.Abs(dx) + Math.Abs(dy);
@@ -283,15 +345,15 @@ public class LevelGen : MonoBehaviour
                 bestIdx = i;
             }
         }
-
         return bestIdx;
     }
 
+    // Generates corridor path variants; prefers non-overlapping unless final attempt.
     bool TryCreateCorridorBetweenRooms(int aIndex, int bIndex)
     {
         Vector2Int from = rooms[aIndex].Center;
         Vector2Int to = rooms[bIndex].Center;
-        // Try several path generation attempts, prefer non-intersecting ones.
+
         for (int attempt = 0; attempt < maxPathAttempts; attempt++)
         {
             var path = CreateZigZagPath(from, to, attempt);
@@ -299,7 +361,6 @@ public class LevelGen : MonoBehaviour
 
             if (avoidIntersections)
             {
-                // 1) Reject any path that would overlap an existing corridor tile
                 foreach (var p in path)
                 {
                     if (corridorTiles.Contains(p))
@@ -308,14 +369,11 @@ public class LevelGen : MonoBehaviour
                         break;
                     }
                 }
-
-                // 2) Reject paths that would run adjacent (4-neighbor) to an existing corridor tile
-                //    except at the two endpoints (we allow rooms to be adjacent to existing corridors).
                 if (!invalid)
                 {
                     foreach (var p in path)
                     {
-                        if (p == from || p == to) continue; // endpoints may touch existing corridors (room connections)
+                        if (p == from || p == to) continue;
                         foreach (var d in CardinalDirs)
                         {
                             if (corridorTiles.Contains(p + d))
@@ -335,13 +393,12 @@ public class LevelGen : MonoBehaviour
                 return true;
             }
         }
-
         return false;
     }
 
+    // Produces an axis-aligned polyline with optional zig-zag; converts to inclusive tile list.
     List<Vector2Int> CreateZigZagPath(Vector2Int from, Vector2Int to, int attemptSeed = 0)
     {
-        // Create a path composed of straight segments (axis-aligned).
         var localRng = new System.Random((seed == 0 ? Environment.TickCount : seed) + attemptSeed + from.x * 37 + from.y * 91);
 
         int dx = to.x - from.x;
@@ -351,20 +408,14 @@ public class LevelGen : MonoBehaviour
         int sx = Math.Sign(dx);
         int sy = Math.Sign(dy);
 
-        // Decide primary axis (the larger delta) and whether we start with X or Y
         bool preferX = absX >= absY;
-        // Sometimes flip to add variety
         if (localRng.NextDouble() < 0.5) preferX = !preferX;
-
-        // With zigzagChance, split the primary axis into two segments so path goes primary -> secondary -> primary (2 turns).
         bool zigzag = localRng.NextDouble() < zigzagChance && (preferX ? absX : absY) >= minTurnSpacing * 2;
 
-        var points = new List<Vector2Int>();
-        points.Add(from);
+        var points = new List<Vector2Int> { from };
 
         if (!zigzag)
         {
-            // Single turn path (or straight if one delta is zero)
             if (preferX)
             {
                 Vector2Int mid = new Vector2Int(to.x, from.y);
@@ -381,7 +432,6 @@ public class LevelGen : MonoBehaviour
         }
         else
         {
-            // Zig-zag: split primary axis into two segments with a secondary segment in the middle.
             if (preferX)
             {
                 int min = Math.Max(1, minTurnSpacing);
@@ -410,7 +460,6 @@ public class LevelGen : MonoBehaviour
             }
         }
 
-        // Convert points into tile list (inclusive of endpoints, axis-aligned lines)
         var tiles = new List<Vector2Int>();
         for (int i = 0; i < points.Count - 1; i++)
         {
@@ -423,9 +472,7 @@ public class LevelGen : MonoBehaviour
                 int syLine = Math.Sign(pB.y - pA.y);
                 int len = Math.Abs(pB.y - pA.y);
                 for (int t = 0; t <= len; t++)
-                {
                     tiles.Add(new Vector2Int(x, pA.y + t * syLine));
-                }
             }
             else if (pA.y == pB.y)
             {
@@ -433,13 +480,10 @@ public class LevelGen : MonoBehaviour
                 int sxLine = Math.Sign(pB.x - pA.x);
                 int len = Math.Abs(pB.x - pA.x);
                 for (int t = 0; t <= len; t++)
-                {
                     tiles.Add(new Vector2Int(pA.x + t * sxLine, y));
-                }
             }
             else
             {
-                // Guard: convert to Manhattan interpolation (shouldn't happen)
                 Vector2Int cur = pA;
                 while (cur != pB)
                 {
@@ -451,35 +495,31 @@ public class LevelGen : MonoBehaviour
                 }
             }
         }
-
         return tiles;
     }
 
+    // Adds all room cells and corridor cells to unified occupancy set.
     void StampRoomsAndCorridorsToFloor()
     {
-        // Mark room tiles (each room is 1x1)
         foreach (var r in rooms)
         {
             for (int x = r.rect.x; x < r.rect.x + r.rect.width; x++)
             {
                 for (int y = r.rect.y; y < r.rect.y + r.rect.height; y++)
-                {
                     floorTiles.Add(new Vector2Int(x, y));
-                }
             }
         }
-
-        // Add corridors into floor
-        foreach (var p in corridorTiles) floorTiles.Add(p);
+        foreach (var p in corridorTiles)
+            floorTiles.Add(p);
     }
 
+    // Manhattan distance utility.
     int ManhattanDistance(Vector2Int a, Vector2Int b)
     {
         return Math.Abs(a.x - b.x) + Math.Abs(a.y - b.y);
     }
 
-    // Instantiate sewer tile prefabs based on connectivity bitmask (N=1, E=2, S=4, W=8).
-    // Start/Goal prefab overrides the mapped prefab if provided.
+    // Instantiates tile prefabs based on connectivity analysis; handles start/goal overrides.
     public void InstantiatePrefabs(bool clearParent = true)
     {
         if (parentForTiles == null)
@@ -491,7 +531,6 @@ public class LevelGen : MonoBehaviour
 #if UNITY_EDITOR
         if (clearParent)
         {
-            // Remove previously created children in editor/runtime for re-instantiation.
             for (int i = parentForTiles.childCount - 1; i >= 0; i--)
             {
 #if UNITY_EDITOR
@@ -508,7 +547,7 @@ public class LevelGen : MonoBehaviour
             GameObject prefab = null;
             Vector3 worldPos = new Vector3((v.x + 0.5f) * cellSize, 0f, (v.y + 0.5f) * cellSize);
             Quaternion rotation = Quaternion.identity;
-            // If this tile is the start or goal room, prefer those prefabs when assigned.
+
             int roomIndex = rooms.FindIndex(r => r.Center == v);
             if (roomIndex >= 0)
             {
@@ -518,128 +557,113 @@ public class LevelGen : MonoBehaviour
                     prefab = GoalPrefab;
             }
 
-            //New system for prefabs ---James Munnis---
             if (prefab == null)
             {
-                //This is a simple system based on number of connections
                 int roomConnections = 0;
-                //Loop through each direction around the tile and check for connections
                 foreach (var dir in CardinalDirs)
                 {
-                    //Floor tiles hashset contains all occupied tiles (rooms + corridors)
                     if (floorTiles.Contains(v + dir))
-                    {
                         roomConnections++;
-                    }
                 }
-
-                //Use the room connections to determine the prefab type and also rotation for corners, t-junctions, and deadends
                 if (tilePrefabsByType != null)
                 {
-
-                    //Deadend as there is only one connection
-                    if (roomConnections == 1)
-                    {
-                        prefab = tilePrefabsByType[4];
-                    }
-                    //Straight connecting two rooms
-                    else if (roomConnections == 2)
-                    {
-                        //Check if it's a corner or straight
-                        int mask = GetConnectionMask(v);
-                        if (mask == 3 || mask == 6 || mask == 9 || mask == 12) //Corners: NE, ES, SW, WN
-                        {
-                            prefab = tilePrefabsByType[1]; //Corner
-                            //Determine rotation based on connection mask
-                            if (mask == 3) //North And East
-                            {
-                                rotation = Quaternion.Euler(0f, -90f, 0f);
-                            }
-                            else if (mask == 6) //East And South
-                            {
-                                rotation = Quaternion.Euler(0f, 0f, 0f);
-                            }
-                            else if (mask == 9) //South And West
-                            {
-                                rotation = Quaternion.Euler(0f, -180, 0f);
-                            }
-                            else if (mask == 12) //West And North
-                            {
-                                rotation = Quaternion.Euler(0f, 90, 0f);
-                            }
-                        }
-                        //Straight connection
-                        else
-                        {
-                            prefab = tilePrefabsByType[0]; //Straight by default
-                                                           //Figure out what rotation by default the prefab should face north forward 
-                                                           //Determine rotation by default the prefabs open ends are z axis
-
-                            if (mask == 15 - 5) //EW 0101
-                            {
-                                rotation = Quaternion.Euler(0f, 90f, 0f);
-                            }
-                        }
-                    }
-                    //T Section joining three rooms
-                    else if (roomConnections == 3)
-                    {
-                        prefab = tilePrefabsByType[2];
-                        //Determine rotation based on missing connection
-                        int mask = GetConnectionMask(v);
-                        if (mask == 7) //Missing West 1110
-                        {
-                            rotation = Quaternion.Euler(0f, -90f, 0f);
-                        }
-                        else if (mask == 11) //Missing South 1011
-                        {
-                            rotation = Quaternion.Euler(0f, -180f, 0f);
-                        }
-                        else if (mask == 13) //Missing East
-                        {
-                            rotation = Quaternion.Euler(0f, 90, 0f);
-                        }
-                        else if (mask == 14) //Missing North
-                        {
-                            rotation = Quaternion.Euler(0f, 0, 0f);
-                        }
-                    }
-                    else if (roomConnections == 4)
-                    {
-                        prefab = tilePrefabsByType[3]; //Crossroad
-                    }
-
-
+                    int type = (int)SelectRoomType(v, ref rotation, roomConnections);
+                    prefab = type != -1 ? tilePrefabsByType[type] : null;
                 }
-
-
             }
-            //Instantiate the prefab if assigned
-            if (prefab != null)
-            {
-                var go = Instantiate(prefab, worldPos, rotation, parentForTiles);
-
-                // optionally scale the prefab to match the configured cell size
-                if (scalePrefabsToCell && prefabNativeSize > 0f)
-                {
-                    float scaleFactor = cellSize / prefabNativeSize;
-                    go.transform.localScale = Vector3.one * scaleFactor;
-                }
-
-                int mask = GetConnectionMask(v);
-                go.name = $"Sewer_{v.x}_{v.y}_m{mask}";
-            }
+            InstantiateTilePrefab(v, prefab, worldPos, rotation);
         }
     }
 
-    int GetConnectionMask(Vector2Int pos)
+    // Determines tile classification and required rotation from its connectivity.
+    TileType SelectRoomType(Vector2Int v, ref Quaternion rotation, int roomConnections)
     {
-        int mask = 0;
-        // North = 1, East = 2, South = 4, West = 8
-        if (floorTiles.Contains(pos + Vector2Int.up)) mask |= 1; //This returns a bitmask based on connections, this one for example checks north and returns 1 if connected aka fthe bits 0001
-        if (floorTiles.Contains(pos + Vector2Int.right)) mask |= 2; //Bits 0010
-        if (floorTiles.Contains(pos + Vector2Int.down)) mask |= 4; //Bits 0100
-        if (floorTiles.Contains(pos + Vector2Int.left)) mask |= 8; //Bits 1000
+        if (roomConnections == 1)
+        {
+            DirectionBitMask mask = GetConnectionMask(v);
+            if (mask.HasFlag(DirectionBitMask.North))
+                rotation = Quaternion.Euler(0f, 180f, 0f);
+            else if (mask.HasFlag(DirectionBitMask.East))
+                rotation = Quaternion.Euler(0f, -90f, 0f);
+            else if (mask.HasFlag(DirectionBitMask.South))
+                rotation = Quaternion.Euler(0f, 0f, 0f);
+            else if (mask.HasFlag(DirectionBitMask.West))
+                rotation = Quaternion.Euler(0f, 90f, 0f);
+            return TileType.Deadend;
+        }
+        else if (roomConnections == 2)
+        {
+            DirectionBitMask mask = GetConnectionMask(v);
+            bool north = mask.HasFlag(DirectionBitMask.North);
+            bool south = mask.HasFlag(DirectionBitMask.South);
+            bool east = mask.HasFlag(DirectionBitMask.East);
+            bool west = mask.HasFlag(DirectionBitMask.West);
+
+            if ((north && east) || (east && south) || (south && west) || (west && north))
+            {
+                if (north && east)
+                    rotation = Quaternion.Euler(0f, -90f, 0f);
+                else if (east && south)
+                    rotation = Quaternion.Euler(0f, 0f, 0f);
+                else if (south && west)
+                    rotation = Quaternion.Euler(0f, 90f, 0f);
+                else if (west && north)
+                    rotation = Quaternion.Euler(0f, 180f, 0f);
+                return TileType.Corner;
+            }
+            else
+            {
+                if (north && south)
+                    rotation = Quaternion.Euler(0f, 0f, 0f);
+                else if (east && west)
+                    rotation = Quaternion.Euler(0f, 90f, 0f);
+                return TileType.Straight;
+            }
+        }
+        else if (roomConnections == 3)
+        {
+            DirectionBitMask mask = GetConnectionMask(v);
+            if (!mask.HasFlag(DirectionBitMask.North))
+                rotation = Quaternion.Euler(0f, 0f, 0f);
+            else if (!mask.HasFlag(DirectionBitMask.East))
+                rotation = Quaternion.Euler(0f, 90f, 0f);
+            else if (!mask.HasFlag(DirectionBitMask.South))
+                rotation = Quaternion.Euler(0f, 180f, 0f);
+            else if (!mask.HasFlag(DirectionBitMask.West))
+                rotation = Quaternion.Euler(0f, 270f, 0f);
+            return TileType.TJunction;
+        }
+        else if (roomConnections == 4)
+        {
+            return TileType.Crossroad;
+        }
+        return TileType.Error;
+    }
+
+    // Instantiates a single tile, scaling if configured, naming for debug.
+    private void InstantiateTilePrefab(Vector2Int v, GameObject prefab, Vector3 worldPos, Quaternion rotation)
+    {
+        if (prefab != null)
+        {
+            var go = Instantiate(prefab, worldPos, rotation, parentForTiles);
+            if (scalePrefabsToCell && prefabNativeSize > 0f)
+            {
+                float scaleFactor = cellSize / prefabNativeSize;
+                go.transform.localScale = Vector3.one * scaleFactor;
+            }
+            int mask = (int)GetConnectionMask(v);
+            go.name = $"Sewer_{v.x}_{v.y}_m{mask}";
+        }
+    }
+
+    // Builds bitmask of connected neighbors in four directions.
+    DirectionBitMask GetConnectionMask(Vector2Int pos)
+    {
+        DirectionBitMask mask = 0;
+        if (floorTiles.Contains(pos + Vector2Int.up)) mask |= DirectionBitMask.North;
+        if (floorTiles.Contains(pos + Vector2Int.right)) mask |= DirectionBitMask.East;
+        if (floorTiles.Contains(pos + Vector2Int.down)) mask |= DirectionBitMask.South;
+        if (floorTiles.Contains(pos + Vector2Int.left)) mask |= DirectionBitMask.West;
         return mask;
     }
 
@@ -647,7 +671,6 @@ public class LevelGen : MonoBehaviour
     {
         if (!drawGizmos) return;
 
-        // Draw rooms (single-tile crossroads)
         Gizmos.color = Color.green;
         if (rooms != null)
         {
@@ -658,47 +681,29 @@ public class LevelGen : MonoBehaviour
                 Vector3 size = new Vector3(r.width * cellSize, cellSize * 0.05f, r.height * cellSize);
                 Gizmos.DrawWireCube(pos, size);
 
-                // start / goal markers
                 if (i == startRoomIndex) Gizmos.color = Color.cyan;
                 Gizmos.DrawSphere(new Vector3((rooms[i].Center.x + 0.5f) * cellSize, 0f, (rooms[i].Center.y + 0.5f) * cellSize), cellSize * 0.125f);
                 if (i == startRoomIndex) Gizmos.color = Color.green;
             }
         }
 
-        // Draw corridors / occupied tiles
         Gizmos.color = Color.yellow;
         if (corridorTiles != null)
         {
             foreach (var t in corridorTiles)
-            {
                 Gizmos.DrawCube(new Vector3((t.x + 0.5f) * cellSize, 0f, (t.y + 0.5f) * cellSize), Vector3.one * cellSize * 0.9f);
-            }
         }
 
-        // Draw floor / occupied tiles outlines
         Gizmos.color = Color.gray;
         if (floorTiles != null)
         {
             foreach (var t in floorTiles)
-            {
                 Gizmos.DrawWireCube(new Vector3((t.x + 0.5f) * cellSize, 0f, (t.y + 0.5f) * cellSize), Vector3.one * cellSize * 0.9f);
-            }
         }
     }
 
     void OnValidate()
     {
-        // Ensure the prefab array has 16 entries for the 4-bit connection masks.
-        if (tilePrefabsByConnection == null || tilePrefabsByConnection.Length != 16)
-        {
-            var tmp = new GameObject[16];
-            if (tilePrefabsByConnection != null)
-            {
-                Array.Copy(tilePrefabsByConnection, tmp, Math.Min(tilePrefabsByConnection.Length, tmp.Length));
-            }
-            tilePrefabsByConnection = tmp;
-        }
-
         gridWidth = Math.Max(3, gridWidth);
         gridHeight = Math.Max(3, gridHeight);
         numRooms = Math.Max(1, numRooms);
@@ -707,12 +712,11 @@ public class LevelGen : MonoBehaviour
         maxPathAttempts = Math.Max(1, maxPathAttempts);
         roomSpacing = Math.Max(0, roomSpacing);
 
-        // Validate float sizes
         cellSize = Mathf.Max(0.01f, cellSize);
         prefabNativeSize = Mathf.Max(0.01f, prefabNativeSize);
     }
 
-    //--- Getters --- // -- James Munnis
+    // Returns world-space start tile center or zero if invalid.
     public Vector3 GetStartPosition()
     {
         if (startRoomIndex >= 0 && startRoomIndex < rooms.Count)
@@ -720,9 +724,6 @@ public class LevelGen : MonoBehaviour
             Vector2Int center = rooms[startRoomIndex].Center;
             return new Vector3((center.x + 0.5f) * cellSize, 0f, (center.y + 0.5f) * cellSize);
         }
-        else
-        {
-            return Vector3.zero;
-        }
+        return Vector3.zero;
     }
 }
