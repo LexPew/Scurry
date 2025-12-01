@@ -16,8 +16,8 @@ public class NavMeshHandler : MonoBehaviour
         agent = GameObject.CreatePrimitive(PrimitiveType.Capsule);
         agent.AddComponent<NavMeshAgent>();
         //Set it to the start position from levelGen
-        LevelGen generator = FindObjectOfType<LevelGen>();
-        agent.transform.position = generator.GetStartPosition();
+        LevelGenV3 generator = FindObjectOfType<LevelGenV3>();
+        agent.transform.position = generator.GetEscapePosition();
         //Set the agent on the navmesh
         NavMeshAgent navMeshAgent = agent.GetComponent<NavMeshAgent>();
         navMeshAgent.Warp(agent.transform.position);

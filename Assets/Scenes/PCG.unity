@@ -38,7 +38,7 @@ RenderSettings:
   m_ReflectionIntensity: 1
   m_CustomReflection: {fileID: 0}
   m_Sun: {fileID: 0}
-  m_IndirectSpecularColor: {r: 0.18028328, g: 0.22571328, b: 0.3069218, a: 1}
+  m_IndirectSpecularColor: {r: 0.18028378, g: 0.22571412, b: 0.30692285, a: 1}
   m_UseRadianceAmbientProbe: 0
 --- !u!157 &3
 LightmapSettings:
@@ -250,7 +250,7 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1248830367}
-  - component: {fileID: 1248830366}
+  - component: {fileID: 1248830370}
   - component: {fileID: 1248830369}
   m_Layer: 0
   m_Name: LevelGenerator
@@ -259,66 +259,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!114 &1248830366
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1248830365}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9bee066844211274198beca1912c4b5d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  gridWidth: 50
-  gridHeight: 50
-  cellSize: 20
-  numRooms: 30
-  maxPlacementAttempts: 250
-  roomSpacing: 4
-  minTurnSpacing: 4
-  zigzagChance: 0.468
-  avoidIntersections: 1
-  maxPathAttempts: 6
-  nestPrefab: {fileID: 3037427851295404658, guid: bd6ccda08ff009d53b20992a9aec1fad,
-    type: 3}
-  nestCount: 1
-  playerPrefab: {fileID: 6470280735601303396, guid: 63fb4259707ac8e4eb2e4d1f6da8a96d,
-    type: 3}
-  seed: 0
-  rooms: []
-  tilePrefabsByConnection:
-  - {fileID: 7172104240882360034, guid: 43a47a5a2ec857f4f9421b3da31211a6, type: 3}
-  - {fileID: 7172104240882360034, guid: c6777063b382ac24b865b9916be71b2c, type: 3}
-  - {fileID: 7172104240882360034, guid: c80c06490423566409d3255df62aab39, type: 3}
-  - {fileID: 7172104240882360034, guid: b914ea38f0ebd39488e45b0ae8ccd58d, type: 3}
-  - {fileID: 7172104240882360034, guid: 45b0da8d08ba9434e83f13aa7e73c4a3, type: 3}
-  - {fileID: 7172104240882360034, guid: 88c6763f8eb8dcf49a6b79c2735267ed, type: 3}
-  - {fileID: 7172104240882360034, guid: 94edebbbd0ff9f6469748170babedd43, type: 3}
-  - {fileID: 7172104240882360034, guid: 7a8fa97e1f4567c419fcfcbe063ed4fe, type: 3}
-  - {fileID: 7172104240882360034, guid: 4880c9209ca73ce40b9dd7bb2429de39, type: 3}
-  - {fileID: 7172104240882360034, guid: 64aa1960ed1c40448badd9f28b81e840, type: 3}
-  - {fileID: 7172104240882360034, guid: c89d948cac972df4d8ddb9f8033b24d4, type: 3}
-  - {fileID: 7172104240882360034, guid: 3317d56b0a4b44a42a85e768d3697c47, type: 3}
-  - {fileID: 7172104240882360034, guid: f12e025d65e32d041ad3b395228e86f7, type: 3}
-  - {fileID: 7172104240882360034, guid: 94df7704589705b448e1e4500347dc1c, type: 3}
-  - {fileID: 7172104240882360034, guid: 2e150f7811d52c24eb572e56f253ed05, type: 3}
-  - {fileID: 7172104240882360034, guid: b010610e1889ef74e9f9a88f6ba1cb9f, type: 3}
-  DefaultTilePrefab: {fileID: 7172104240882360034, guid: 43a47a5a2ec857f4f9421b3da31211a6,
-    type: 3}
-  StartPrefab: {fileID: 7172104240882360034, guid: ae8c293aa84a09341aac8de6632f6f4f,
-    type: 3}
-  GoalPrefab: {fileID: 7172104240882360034, guid: 639c98b96cb6d0546a168a75823ce2ca,
-    type: 3}
-  prefabNativeSize: 20
-  scalePrefabsToCell: 0
-  parentForTiles: {fileID: 1248830367}
-  drawGizmos: 1
-  autoGenerateOnStart: 1
-  instantiateOnGenerate: 1
-  startRoomIndex: -1
-  goalRoomIndex: -1
 --- !u!4 &1248830367
 Transform:
   m_ObjectHideFlags: 0
@@ -365,3 +305,47 @@ MonoBehaviour:
   m_MinRegionArea: 2
   m_NavMeshData: {fileID: 0}
   m_BuildHeightMesh: 0
+--- !u!114 &1248830370
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1248830365}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3f763a1722e45284eae2f6cbfb53c1fa, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  gridWidth: 25
+  gridHeight: 25
+  cellSize: 20
+  numRooms: 31
+  maxPlacementAttempts: 250
+  roomSpacing: 2
+  minTurnSpacing: 2
+  zigzagChance: 0.707
+  avoidIntersections: 1
+  maxPathAttempts: 6
+  nestPrefab: {fileID: 3037427851295404658, guid: bd6ccda08ff009d53b20992a9aec1fad,
+    type: 3}
+  nestCount: 5
+  playerPrefab: {fileID: 6470280735601303396, guid: 63fb4259707ac8e4eb2e4d1f6da8a96d,
+    type: 3}
+  seed: 0
+  rooms: []
+  tilePrefabsByType:
+  - {fileID: 7172104240882360034, guid: 132e270d1f506cf858b7238020e1ce65, type: 3}
+  - {fileID: 7172104240882360034, guid: 27e0c8daf2c8049f1bc6fe26280bb4fc, type: 3}
+  - {fileID: 7172104240882360034, guid: bdb2b8f1f204629c9925e70ee2e1478f, type: 3}
+  - {fileID: 7172104240882360034, guid: 820490c7c38a250b4ac01e54324f2609, type: 3}
+  - {fileID: 7172104240882360034, guid: 522b20965af46f990b3b74136534e7ba, type: 3}
+  EscapePrefab: {fileID: 7172104240882360034, guid: 639c98b96cb6d0546a168a75823ce2ca,
+    type: 3}
+  prefabNativeSize: 20
+  scalePrefabsToCell: 1
+  parentForTiles: {fileID: 1248830367}
+  drawGizmos: 1
+  autoGenerateOnStart: 1
+  instantiateOnGenerate: 1
+  escapeRoomIndex: -1
