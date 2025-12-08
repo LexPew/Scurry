@@ -314,37 +314,35 @@ MonoBehaviour:
   m_GameObject: {fileID: 1248830365}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3f763a1722e45284eae2f6cbfb53c1fa, type: 3}
+  m_Script: {fileID: 11500000, guid: 9bee066844211274198beca1912c4b5d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gridWidth: 25
-  gridHeight: 25
+  gridWidth: 100
+  gridHeight: 60
   cellSize: 20
-  numRooms: 31
+  numRooms: 12
   maxPlacementAttempts: 250
-  roomSpacing: 2
-  minTurnSpacing: 2
-  zigzagChance: 0.707
+  roomSpacing: 1
+  minTurnSpacing: 3
+  zigzagChance: 0.45
   avoidIntersections: 1
   maxPathAttempts: 6
   nestPrefab: {fileID: 3037427851295404658, guid: bd6ccda08ff009d53b20992a9aec1fad,
     type: 3}
   nestCount: 5
-  playerPrefab: {fileID: 6470280735601303396, guid: 63fb4259707ac8e4eb2e4d1f6da8a96d,
-    type: 3}
+  playerPrefab: {fileID: 0}
   seed: 0
   rooms: []
   tilePrefabsByType:
-  - {fileID: 7172104240882360034, guid: 132e270d1f506cf858b7238020e1ce65, type: 3}
-  - {fileID: 7172104240882360034, guid: 27e0c8daf2c8049f1bc6fe26280bb4fc, type: 3}
-  - {fileID: 7172104240882360034, guid: bdb2b8f1f204629c9925e70ee2e1478f, type: 3}
-  - {fileID: 7172104240882360034, guid: 820490c7c38a250b4ac01e54324f2609, type: 3}
-  - {fileID: 7172104240882360034, guid: 522b20965af46f990b3b74136534e7ba, type: 3}
-  EscapePrefab: {fileID: 7172104240882360034, guid: 639c98b96cb6d0546a168a75823ce2ca,
-    type: 3}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  - {fileID: 0}
+  escapePrefab: {fileID: 0}
   prefabNativeSize: 20
   scalePrefabsToCell: 1
-  parentForTiles: {fileID: 1248830367}
+  parentForTiles: {fileID: 0}
   drawGizmos: 1
   autoGenerateOnStart: 1
   instantiateOnGenerate: 1
