@@ -85,7 +85,7 @@ public class Player : MonoBehaviour
         //Im using raw for snappier input response
         float vertical = playerInput.actions["Move"].ReadValue<Vector2>().y;
         float horizontal = playerInput.actions["Move"].ReadValue<Vector2>().x;
-        Debug.Log("Vertical Input: " + vertical + " Horizontal Input: " + horizontal);
+        //Debug.Log("Vertical Input: " + vertical + " Horizontal Input: " + horizontal);
         Vector3 move = forward * vertical + right * horizontal;
 
         // Normalize only if diagonal
