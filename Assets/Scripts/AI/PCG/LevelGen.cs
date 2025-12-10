@@ -98,6 +98,18 @@ public class LevelGen : MonoBehaviour
     [Tooltip("Player prefab that spawns at the start room.")]
     private GameObject playerPrefab;
 
+    [SerializeField]
+    [Tooltip("key prefab that spawns in random room(s).")]
+    private GameObject keyPrefab;
+
+    [SerializeField]
+    [Tooltip("Number of keys to place in the level.")]
+    private int keyCount = 3;
+
+    [SerializeField]
+    [Tooltip("Minimum distance (manhattan) from escape room to place keys.")]
+    private int minKeyDistance = 10;
+
     // -------------------------------------------------------------
     //  SEEDING
     // -------------------------------------------------------------
@@ -170,14 +182,14 @@ public class LevelGen : MonoBehaviour
             NavMeshSurface surface = GetComponent<NavMeshSurface>();
             surface.BuildNavMesh();
 
-            // Nest placement in non-start/goal rooms; avoids duplicates.
+            // Nest placement in non-start/goal room; avoids duplicates.
             List<int> usedRooms = new List<int>();
             for (int i = 0; i < nestCount; i++)
             {
                 if (rooms.Count <= 2) break;
-                int roomIndex = UnityEngine.Random.Range(1, rooms.Count - 1);
-                while (usedRooms.Contains(roomIndex))
-                    roomIndex = UnityEngine.Random.Range(1, rooms.Count - 1);
+                int roomIndex = UnityEngine.Random.Range(0, rooms.Count);
+                while (usedRooms.Contains(roomIndex)||roomIndex == escapeRoomIndex)
+                    roomIndex = UnityEngine.Random.Range(0, rooms.Count);
 
                 usedRooms.Add(roomIndex);
                 Vector2Int roomCenter = rooms[roomIndex].Center;
@@ -212,11 +224,34 @@ public class LevelGen : MonoBehaviour
 
         PlaceRoomsAsSingleTiles();
         PlaceEscapeTile();
+        PlaceKeys();
         ConnectRooms();
         StampRoomsAndCorridorsToFloor();
 
         if (instantiateOnGenerate)
             InstantiatePrefabs();
+    }
+
+    private void PlaceKeys()
+    {
+        //place keys in random rooms that are not the escape room, not duplicates and are outside the minimum distance (manhattan)
+        List<int> usedRooms = new List<int>();
+        for (int i = 0; i < keyCount; i++)
+        {
+            if (rooms.Count <= 2) break;
+            int roomIndex = rng.Next(0, rooms.Count);
+            while (usedRooms.Contains(roomIndex) || roomIndex == escapeRoomIndex ||
+                   ManhattanDistance(rooms[roomIndex].Center, rooms[escapeRoomIndex].Center) < minKeyDistance)
+            {
+                roomIndex = rng.Next(0, rooms.Count);
+            }
+            usedRooms.Add(roomIndex);
+            Vector2Int roomCenter = rooms[roomIndex].Center;
+            Vector3 keyPos = new Vector3((roomCenter.x + 0.5f) * cellSize, 0f, (roomCenter.y + 0.5f) * cellSize);
+            Instantiate(keyPrefab, keyPos + Vector3.up * 1.0f, Quaternion.identity, transform);
+            //debug log
+            Debug.Log($"Placed key {i + 1} in room {roomIndex} at position {keyPos}");
+        }
     }
 
     void PlaceRoomsAsSingleTiles()
@@ -625,14 +660,32 @@ public class LevelGen : MonoBehaviour
     {
         if (prefab != null)
         {
-            var go = Instantiate(prefab, worldPos, rotation, parentForTiles);
+            var tilePrefab = Instantiate(prefab, worldPos, rotation, parentForTiles);
             if (scalePrefabsToCell && prefabNativeSize > 0f)
             {
                 float scaleFactor = cellSize / prefabNativeSize;
-                go.transform.localScale = Vector3.one * scaleFactor;
+                tilePrefab.transform.localScale = Vector3.one * scaleFactor;
             }
             int mask = (int)GetConnectionMask(v);
-            go.name = $"Sewer_{v.x}_{v.y}_m{mask}";
+            //get room index
+            int roomIndex = rooms.FindIndex(r => r.Center == v);
+            if (mask != 0) {
+
+                if (roomIndex == escapeRoomIndex)
+                {
+                    //name as escape tile using room index for clarity and mask
+                    tilePrefab.name = $"EscapeRoom_{roomIndex}_x{v.x}_y{v.y}_m{mask}";
+                    return;
+                }
+            }
+            if (roomIndex != -1)
+            {
+                tilePrefab.name = $"SewerTile_{roomIndex}_x{v.x}_y{v.y}_m{mask}";
+                return;
+            }
+            tilePrefab.name = $"SewerTile_Corridor_x{v.x}_y{v.y}_m{mask}";
+
+
         }
     }
 
