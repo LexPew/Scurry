@@ -19,9 +19,8 @@ public class KeyScript : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        //spin the key
-        transform.Rotate(new Vector3(0, 50, 0) * Time.deltaTime);
-
+        //spin the key in world space
+        transform.Rotate(Vector3.up * Time.deltaTime * 50, Space.World);
 
     }
 }
