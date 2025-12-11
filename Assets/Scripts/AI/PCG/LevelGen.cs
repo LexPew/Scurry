@@ -136,7 +136,13 @@ public class LevelGen : MonoBehaviour
     // -------------------------------------------------------------
     [Header("Tile Prefabs")]
     [Tooltip("Index order: 0=Straight, 1=Corner, 2=T-Junction, 3=Crossroad, 4=Deadend")]
-    public GameObject[] tilePrefabsByType = new GameObject[5];
+    public List<GameObject> straightPrefabs;
+    public List<GameObject> cornerPrefabs;
+    public List<GameObject> tJunctionPrefabs;
+    public List<GameObject> crossroadPrefabs;
+    public List<GameObject> deadendPrefabs;
+
+    private List<GameObject>[] tilePrefabsByType = null;
 
     [Tooltip("Optional override for escape tile.")]
     public GameObject escapePrefab;
@@ -176,6 +182,16 @@ public class LevelGen : MonoBehaviour
 
     private void Awake()
     {
+        for (int i = 0; i <= 4; i++)
+        {
+            switch (i)
+            {
+                case 0:
+                    tilePrefabsByType = new List<GameObject>[] { straightPrefabs, cornerPrefabs, tJunctionPrefabs, crossroadPrefabs, deadendPrefabs };
+                    break;
+            }
+        }
+
         if (autoGenerateOnStart)
         {
             Generate();
@@ -576,11 +592,28 @@ public class LevelGen : MonoBehaviour
                 if (tilePrefabsByType != null)
                 {
                     int type = (int)SelectRoomType(v, ref rotation, roomConnections);
-                    prefab = type != -1 ? tilePrefabsByType[type] : null;
+                    prefab = GetRandomPrefabForType(type);
                 }
             }
             InstantiateTilePrefab(v, prefab, worldPos, rotation);
         }
+    }
+
+    private GameObject GetRandomPrefabForType(int type)
+    {
+        if (tilePrefabsByType == null) return null;
+
+        if (type < 0 || type >= tilePrefabsByType.Length ) return null;
+
+        var prefabList = tilePrefabsByType[type];
+        if (prefabList == null || prefabList.Count == 0) return null;
+        int index;
+        if (rng != null)
+            index = rng.Next(0, prefabList.Count);
+        else
+            index = UnityEngine.Random.Range(0, prefabList.Count);
+
+        return prefabList[index];
     }
 
     // Determines tile classification and required rotation from its connectivity.

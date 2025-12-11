@@ -66,11 +66,15 @@ MonoBehaviour:
   minKeyDistance: 10
   seed: 0
   rooms: []
-  tilePrefabsByType:
+  straightPrefabs:
   - {fileID: 7172104240882360034, guid: 132e270d1f506cf858b7238020e1ce65, type: 3}
+  cornerPrefabs:
   - {fileID: 7172104240882360034, guid: 27e0c8daf2c8049f1bc6fe26280bb4fc, type: 3}
+  tJunctionPrefabs:
   - {fileID: 7172104240882360034, guid: bdb2b8f1f204629c9925e70ee2e1478f, type: 3}
+  crossroadPrefabs:
   - {fileID: 7172104240882360034, guid: 820490c7c38a250b4ac01e54324f2609, type: 3}
+  deadendPrefabs:
   - {fileID: 7172104240882360034, guid: 522b20965af46f990b3b74136534e7ba, type: 3}
   escapePrefab: {fileID: 7276203665800258853, guid: a4c445e7eb403874487438041c0f54dc,
     type: 3}
