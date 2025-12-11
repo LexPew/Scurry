@@ -248,7 +248,14 @@ public class LevelGen : MonoBehaviour
             usedRooms.Add(roomIndex);
             Vector2Int roomCenter = rooms[roomIndex].Center;
             Vector3 keyPos = new Vector3((roomCenter.x + 0.5f) * cellSize, 0f, (roomCenter.y + 0.5f) * cellSize);
-            Instantiate(keyPrefab, keyPos + Vector3.up * 1.0f, Quaternion.identity, transform);
+            //Instantiate key prefab at keyPos with slight y offset, with no parent
+            GameObject keyObj = Instantiate(keyPrefab, keyPos + new Vector3(0, 1.0f, 0), Quaternion.identity, transform);
+            //Check object has intantiated correctly
+            if (keyObj == null)
+            {
+                Debug.LogError("Failed to instantiate key prefab.");
+                continue;
+            }
             //debug log
             Debug.Log($"Placed key {i + 1} in room {roomIndex} at position {keyPos}");
         }
@@ -549,20 +556,6 @@ public class LevelGen : MonoBehaviour
             parentForTiles = new GameObject("GeneratedTiles").transform;
             parentForTiles.SetParent(this.transform, false);
         }
-
-#if UNITY_EDITOR
-        if (clearParent)
-        {
-            for (int i = parentForTiles.childCount - 1; i >= 0; i--)
-            {
-#if UNITY_EDITOR
-                DestroyImmediate(parentForTiles.GetChild(i).gameObject);
-#else
-                Destroy(parentForTiles.GetChild(i).gameObject);
-#endif
-            }
-        }
-#endif
 
         foreach (var v in floorTiles)
         {

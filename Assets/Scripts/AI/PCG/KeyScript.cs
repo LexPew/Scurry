@@ -23,4 +23,5 @@ public class KeyScript : MonoBehaviour
         transform.Rotate(Vector3.up * Time.deltaTime * 50, Space.World);
 
     }
+
 }
