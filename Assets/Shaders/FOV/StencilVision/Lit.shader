@@ -1,4 +1,4 @@
-Shader "FOV/Lit"
+Shader "StencilVision/Lit"
 {
     Properties
     {
