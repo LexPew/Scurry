@@ -47,7 +47,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   gridWidth: 30
   gridHeight: 30
-  cellSize: 20
+  cellSize: 5
   numRooms: 30
   maxPlacementAttempts: 250
   roomSpacing: 10
@@ -57,20 +57,26 @@ MonoBehaviour:
   maxPathAttempts: 2
   nestPrefab: {fileID: 3037427851295404658, guid: bd6ccda08ff009d53b20992a9aec1fad,
     type: 3}
-  nestCount: 1
+  nestCount: 0
   playerPrefab: {fileID: 6470280735601303396, guid: 63fb4259707ac8e4eb2e4d1f6da8a96d,
     type: 3}
+  keyPrefab: {fileID: 2187727656681152415, guid: 65779088ebe75274d9adfd3ae143dd0c,
+    type: 3}
+  keyCount: 3
+  minKeyDistance: 10
   seed: 0
   rooms: []
-  tilePrefabsByType:
+  straightPrefabs:
   - {fileID: 7172104240882360034, guid: 132e270d1f506cf858b7238020e1ce65, type: 3}
+  cornerPrefabs:
   - {fileID: 7172104240882360034, guid: 27e0c8daf2c8049f1bc6fe26280bb4fc, type: 3}
+  tJunctionPrefabs:
   - {fileID: 7172104240882360034, guid: bdb2b8f1f204629c9925e70ee2e1478f, type: 3}
+  crossroadPrefabs:
   - {fileID: 7172104240882360034, guid: 820490c7c38a250b4ac01e54324f2609, type: 3}
+  deadendPrefabs:
   - {fileID: 7172104240882360034, guid: 522b20965af46f990b3b74136534e7ba, type: 3}
-  StartPrefab: {fileID: 7172104240882360034, guid: ae8c293aa84a09341aac8de6632f6f4f,
-    type: 3}
-  GoalPrefab: {fileID: 7172104240882360034, guid: 639c98b96cb6d0546a168a75823ce2ca,
+  escapePrefab: {fileID: 7276203665800258853, guid: a4c445e7eb403874487438041c0f54dc,
     type: 3}
   prefabNativeSize: 20
   scalePrefabsToCell: 0
@@ -78,8 +84,7 @@ MonoBehaviour:
   drawGizmos: 1
   autoGenerateOnStart: 1
   instantiateOnGenerate: 1
-  startRoomIndex: -1
-  goalRoomIndex: -1
+  escapeRoomIndex: -1
 --- !u!114 &313747803726383675
 MonoBehaviour:
   m_ObjectHideFlags: 0

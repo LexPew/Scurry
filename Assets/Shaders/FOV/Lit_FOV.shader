@@ -86,6 +86,10 @@ Shader "FOV/Lit"
             "IgnoreProjector" = "True"
         }
         LOD 300
+        // TODO: To make the material viewable in the scene view without an FOV volume,
+        // implement an editor-only fallback pass or a SceneView-specific keyword/condition
+        // that renders the material normally when no FOV volume is detected.
+        
         Stencil{
             Ref 1
             Comp Equal

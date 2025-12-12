@@ -185,7 +185,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   viewRadius: 25
   viewAngle: 163
-  resolution: 1
+  resolution: 2
   edgeResolveResolution: 6
   edgeDistanceThreshold: 0
   wallMask:
@@ -305,7 +305,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: a2fb0fb2160cb9d4cb6ba1f2edb05e92, type: 2}
+  - {fileID: 2100000, guid: 893162aaa0f081e4fa855a13e714e1c0, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
