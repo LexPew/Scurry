@@ -48,7 +48,7 @@ MonoBehaviour:
     type: 3}
   rats: []
   swarmRoamRadius: 40
-  ratCount: 100
+  ratCount: 10
   currentBehaviour: {fileID: 11400000, guid: 305684b4b386ae9e58305122f7792bfc, type: 2}
   defaultBehaviour: {fileID: 11400000, guid: f9608a3160aa2f485b331409a687ffef, type: 2}
   chaseBehaviour: {fileID: 11400000, guid: 3d105390ef558eae4906853779296248, type: 2}

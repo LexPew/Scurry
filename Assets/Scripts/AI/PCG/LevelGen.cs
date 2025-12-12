@@ -1,17 +1,20 @@
-using System.Collections.Generic;
 using System;
+using System.Collections;
+using System.Collections.Generic;
 using Unity.AI.Navigation;
 using UnityEngine;
 
 [Serializable]
 public struct Room
 {
-    // Single–cell room wrapper retained for potential future expansion.
     public RectInt rect;
+
     public Vector2Int Center => new Vector2Int(rect.x + rect.width / 2, rect.y + rect.height / 2);
+
     public Room(RectInt r) { rect = r; }
 }
-// Cardinal directions.
+
+//cardinal directions
 public enum Directions
 {
     North,
@@ -19,7 +22,8 @@ public enum Directions
     South,
     West
 }
-// Bitmask values for 4‑way cardinal connectivity.
+
+//bitmask for 4 way cardinal direction
 enum DirectionBitMask
 {
     North = 1,
@@ -38,7 +42,6 @@ enum TileType
     Deadend = 4,
     Error = -1
 }
-
 public class LevelGen : MonoBehaviour
 {
     // -------------------------------------------------------------
@@ -52,7 +55,6 @@ public class LevelGen : MonoBehaviour
     [Tooltip("World units per logical tile.")]
     public float cellSize = 20f;
 
-
     // -------------------------------------------------------------
     //  ROOM GENERATION
     // -------------------------------------------------------------
@@ -65,7 +67,6 @@ public class LevelGen : MonoBehaviour
 
     [Tooltip("Minimum Chebyshev distance between room centers.")]
     public int roomSpacing = 1;
-
 
     // -------------------------------------------------------------
     //  CORRIDOR GENERATION
@@ -84,7 +85,6 @@ public class LevelGen : MonoBehaviour
     [Tooltip("Attempts per corridor link before accepting overlap.")]
     public int maxPathAttempts = 6;
 
-
     // -------------------------------------------------------------
     //  ENTITY SPAWNING (Nests, Player)
     // -------------------------------------------------------------
@@ -98,6 +98,17 @@ public class LevelGen : MonoBehaviour
     [Tooltip("Player prefab that spawns at the start room.")]
     private GameObject playerPrefab;
 
+    [SerializeField]
+    [Tooltip("key prefab that spawns in random room(s).")]
+    private GameObject keyPrefab;
+
+    [SerializeField]
+    [Tooltip("Number of keys to place in the level.")]
+    private int keyCount = 3;
+
+    [SerializeField]
+    [Tooltip("Minimum distance (manhattan) from escape room to place keys.")]
+    private int minKeyDistance = 10;
 
     // -------------------------------------------------------------
     //  SEEDING
@@ -125,20 +136,23 @@ public class LevelGen : MonoBehaviour
     // -------------------------------------------------------------
     [Header("Tile Prefabs")]
     [Tooltip("Index order: 0=Straight, 1=Corner, 2=T-Junction, 3=Crossroad, 4=Deadend")]
-    public GameObject[] tilePrefabsByType = new GameObject[5];
+    public List<GameObject> straightPrefabs;
+    public List<GameObject> cornerPrefabs;
+    public List<GameObject> tJunctionPrefabs;
+    public List<GameObject> crossroadPrefabs;
+    public List<GameObject> deadendPrefabs;
 
-    [Tooltip("Optional override for start room tile.")]
-    public GameObject StartPrefab;
+    private List<GameObject>[] tilePrefabsByType = null;
 
-    [Tooltip("Optional override for goal room tile.")]
-    public GameObject GoalPrefab;
+    [Tooltip("Optional override for escape tile.")]
+    public GameObject escapePrefab;
+
 
     [Tooltip("Native authored prefab unit size for auto-scaling to cellSize.")]
     public float prefabNativeSize = 20f;
 
     [Tooltip("Automatically scale prefabs to fill each grid cell.")]
     public bool scalePrefabsToCell = true;
-
 
     // -------------------------------------------------------------
     //  DEBUG / EXECUTION
@@ -156,34 +170,42 @@ public class LevelGen : MonoBehaviour
     [Tooltip("Instantiate tile prefabs after generation.")]
     public bool instantiateOnGenerate = true;
 
-
     // -------------------------------------------------------------
     //  INTERNAL STATE
     // -------------------------------------------------------------
-    [HideInInspector] public int startRoomIndex = -1;
-    [HideInInspector] public int goalRoomIndex = -1;
+    [HideInInspector] public int escapeRoomIndex = -1;
 
     private System.Random rng;
 
-    // 4‑way cardinal offsets.
+    // 4?way cardinal offsets.
     private static readonly Vector2Int[] CardinalDirs = new[] { Vector2Int.up, Vector2Int.right, Vector2Int.down, Vector2Int.left };
 
-    void Awake()
+    private void Awake()
     {
+        for (int i = 0; i <= 4; i++)
+        {
+            switch (i)
+            {
+                case 0:
+                    tilePrefabsByType = new List<GameObject>[] { straightPrefabs, cornerPrefabs, tJunctionPrefabs, crossroadPrefabs, deadendPrefabs };
+                    break;
+            }
+        }
+
         if (autoGenerateOnStart)
         {
             Generate();
             NavMeshSurface surface = GetComponent<NavMeshSurface>();
             surface.BuildNavMesh();
 
-            // Nest placement in non-start/goal rooms; avoids duplicates.
+            // Nest placement in non-start/goal room; avoids duplicates.
             List<int> usedRooms = new List<int>();
             for (int i = 0; i < nestCount; i++)
             {
                 if (rooms.Count <= 2) break;
-                int roomIndex = UnityEngine.Random.Range(1, rooms.Count - 1);
-                while (usedRooms.Contains(roomIndex))
-                    roomIndex = UnityEngine.Random.Range(1, rooms.Count - 1);
+                int roomIndex = UnityEngine.Random.Range(0, rooms.Count);
+                while (usedRooms.Contains(roomIndex)||roomIndex == escapeRoomIndex)
+                    roomIndex = UnityEngine.Random.Range(0, rooms.Count);
 
                 usedRooms.Add(roomIndex);
                 Vector2Int roomCenter = rooms[roomIndex].Center;
@@ -194,23 +216,31 @@ public class LevelGen : MonoBehaviour
             // Player spawn over start tile.
             if (playerPrefab != null)
             {
-                Vector3 startPos = GetStartPosition();
-                Instantiate(playerPrefab, startPos + Vector3.up * 2.0f, Quaternion.identity);
+                Vector3 spawnPos = GetEscapePosition();
+                Instantiate(playerPrefab, spawnPos + Vector3.up * 2.0f, Quaternion.identity);
+            }
+
+            //spawn exit on start tile
+            if (escapePrefab != null)
+            {
+                Vector3 spawnPos = GetEscapePosition();
+                Instantiate(escapePrefab, spawnPos + new Vector3(0, 0, -2), Quaternion.identity);
             }
         }
     }
 
-    // Full pipeline: clear, regenerate, connect, stamp, instantiate.
     public void Generate()
     {
         rng = seed == 0 ? new System.Random() : new System.Random(seed);
         rooms.Clear();
         corridorTiles.Clear();
         floorTiles.Clear();
-        startRoomIndex = goalRoomIndex = -1;
+        escapeRoomIndex = -1; //set to minus one before generation in case of re-generation
+
 
         PlaceRoomsAsSingleTiles();
-        PickStartAndGoal();
+        PlaceEscapeTile();
+        PlaceKeys();
         ConnectRooms();
         StampRoomsAndCorridorsToFloor();
 
@@ -218,7 +248,35 @@ public class LevelGen : MonoBehaviour
             InstantiatePrefabs();
     }
 
-    // Places single-cell rooms subject to spacing, then fallback loose fill if insufficient.
+    private void PlaceKeys()
+    {
+        //place keys in random rooms that are not the escape room, not duplicates and are outside the minimum distance (manhattan)
+        List<int> usedRooms = new List<int>();
+        for (int i = 0; i < keyCount; i++)
+        {
+            if (rooms.Count <= 2) break;
+            int roomIndex = rng.Next(0, rooms.Count);
+            while (usedRooms.Contains(roomIndex) || roomIndex == escapeRoomIndex ||
+                   ManhattanDistance(rooms[roomIndex].Center, rooms[escapeRoomIndex].Center) < minKeyDistance)
+            {
+                roomIndex = rng.Next(0, rooms.Count);
+            }
+            usedRooms.Add(roomIndex);
+            Vector2Int roomCenter = rooms[roomIndex].Center;
+            Vector3 keyPos = new Vector3((roomCenter.x + 0.5f) * cellSize, 0f, (roomCenter.y + 0.5f) * cellSize);
+            //Instantiate key prefab at keyPos with slight y offset, with no parent
+            GameObject keyObj = Instantiate(keyPrefab, keyPos + new Vector3(0, 1.0f, 0), Quaternion.identity, transform);
+            //Check object has intantiated correctly
+            if (keyObj == null)
+            {
+                Debug.LogError("Failed to instantiate key prefab.");
+                continue;
+            }
+            //debug log
+            Debug.Log($"Placed key {i + 1} in room {roomIndex} at position {keyPos}");
+        }
+    }
+
     void PlaceRoomsAsSingleTiles()
     {
         int attempts = 0;
@@ -269,30 +327,17 @@ public class LevelGen : MonoBehaviour
         }
     }
 
-    // Select two rooms with maximal Manhattan separation for start/goal.
-    void PickStartAndGoal()
+    void PlaceEscapeTile()
     {
-        if (rooms.Count == 0) return;
-        int bestA = 0, bestB = 0;
-        int bestDist = -1;
-        for (int i = 0; i < rooms.Count; i++)
-        {
-            for (int j = i + 1; j < rooms.Count; j++)
-            {
-                int d = ManhattanDistance(rooms[i].Center, rooms[j].Center);
-                if (d > bestDist)
-                {
-                    bestDist = d;
-                    bestA = i;
-                    bestB = j;
-                }
-            }
-        }
-        startRoomIndex = bestA;
-        goalRoomIndex = bestB;
+        // pick a random room to be the escape room where the player spawns
+        int escapeRoomIndex = rng.Next(0, rooms.Count);
+        Room escapeRoom = rooms[escapeRoomIndex];
+        Vector2Int escapePos = escapeRoom.Center;
+        Vector3 worldPos = new Vector3(escapePos.x * cellSize, 0f, escapePos.y * cellSize);
+        //assign ecape room index, instantiated later with rest of rooms;
+        this.escapeRoomIndex = escapeRoomIndex;
     }
 
-    // Attempts directional nearest-neighbor corridor links without duplication.
     void ConnectRooms()
     {
         var connectedPairs = new HashSet<(int, int)>();
@@ -528,20 +573,6 @@ public class LevelGen : MonoBehaviour
             parentForTiles.SetParent(this.transform, false);
         }
 
-#if UNITY_EDITOR
-        if (clearParent)
-        {
-            for (int i = parentForTiles.childCount - 1; i >= 0; i--)
-            {
-#if UNITY_EDITOR
-                DestroyImmediate(parentForTiles.GetChild(i).gameObject);
-#else
-                Destroy(parentForTiles.GetChild(i).gameObject);
-#endif
-            }
-        }
-#endif
-
         foreach (var v in floorTiles)
         {
             GameObject prefab = null;
@@ -549,13 +580,6 @@ public class LevelGen : MonoBehaviour
             Quaternion rotation = Quaternion.identity;
 
             int roomIndex = rooms.FindIndex(r => r.Center == v);
-            if (roomIndex >= 0)
-            {
-                if (roomIndex == startRoomIndex && StartPrefab != null)
-                    prefab = StartPrefab;
-                else if (roomIndex == goalRoomIndex && GoalPrefab != null)
-                    prefab = GoalPrefab;
-            }
 
             if (prefab == null)
             {
@@ -568,11 +592,28 @@ public class LevelGen : MonoBehaviour
                 if (tilePrefabsByType != null)
                 {
                     int type = (int)SelectRoomType(v, ref rotation, roomConnections);
-                    prefab = type != -1 ? tilePrefabsByType[type] : null;
+                    prefab = GetRandomPrefabForType(type);
                 }
             }
             InstantiateTilePrefab(v, prefab, worldPos, rotation);
         }
+    }
+
+    private GameObject GetRandomPrefabForType(int type)
+    {
+        if (tilePrefabsByType == null) return null;
+
+        if (type < 0 || type >= tilePrefabsByType.Length ) return null;
+
+        var prefabList = tilePrefabsByType[type];
+        if (prefabList == null || prefabList.Count == 0) return null;
+        int index;
+        if (rng != null)
+            index = rng.Next(0, prefabList.Count);
+        else
+            index = UnityEngine.Random.Range(0, prefabList.Count);
+
+        return prefabList[index];
     }
 
     // Determines tile classification and required rotation from its connectivity.
@@ -645,14 +686,32 @@ public class LevelGen : MonoBehaviour
     {
         if (prefab != null)
         {
-            var go = Instantiate(prefab, worldPos, rotation, parentForTiles);
+            var tilePrefab = Instantiate(prefab, worldPos, rotation, parentForTiles);
             if (scalePrefabsToCell && prefabNativeSize > 0f)
             {
                 float scaleFactor = cellSize / prefabNativeSize;
-                go.transform.localScale = Vector3.one * scaleFactor;
+                tilePrefab.transform.localScale = Vector3.one * scaleFactor;
             }
             int mask = (int)GetConnectionMask(v);
-            go.name = $"Sewer_{v.x}_{v.y}_m{mask}";
+            //get room index
+            int roomIndex = rooms.FindIndex(r => r.Center == v);
+            if (mask != 0) {
+
+                if (roomIndex == escapeRoomIndex)
+                {
+                    //name as escape tile using room index for clarity and mask
+                    tilePrefab.name = $"EscapeRoom_{roomIndex}_x{v.x}_y{v.y}_m{mask}";
+                    return;
+                }
+            }
+            if (roomIndex != -1)
+            {
+                tilePrefab.name = $"SewerTile_{roomIndex}_x{v.x}_y{v.y}_m{mask}";
+                return;
+            }
+            tilePrefab.name = $"SewerTile_Corridor_x{v.x}_y{v.y}_m{mask}";
+
+
         }
     }
 
@@ -667,63 +726,64 @@ public class LevelGen : MonoBehaviour
         return mask;
     }
 
-    void OnDrawGizmosSelected()
+    //void OnDrawGizmosSelected()
+    //{
+    //    if (!drawGizmos) return;
+
+    //    Gizmos.color = Color.green;
+    //    if (rooms != null)
+    //    {
+    //        for (int i = 0; i < rooms.Count; i++)
+    //        {
+    //            var r = rooms[i].rect;
+    //            Vector3 pos = new Vector3((r.x + 0.5f) * cellSize, 0f, (r.y + 0.5f) * cellSize);
+    //            Vector3 size = new Vector3(r.width * cellSize, cellSize * 0.05f, r.height * cellSize);
+    //            Gizmos.DrawWireCube(pos, size);
+
+    //            if (i == startRoomIndex) Gizmos.color = Color.cyan;
+    //            Gizmos.DrawSphere(new Vector3((rooms[i].Center.x + 0.5f) * cellSize, 0f, (rooms[i].Center.y + 0.5f) * cellSize), cellSize * 0.125f);
+    //            if (i == startRoomIndex) Gizmos.color = Color.green;
+    //        }
+    //    }
+
+    //    Gizmos.color = Color.yellow;
+    //    if (corridorTiles != null)
+    //    {
+    //        foreach (var t in corridorTiles)
+    //            Gizmos.DrawCube(new Vector3((t.x + 0.5f) * cellSize, 0f, (t.y + 0.5f) * cellSize), Vector3.one * cellSize * 0.9f);
+    //    }
+
+    //    Gizmos.color = Color.gray;
+    //    if (floorTiles != null)
+    //    {
+    //        foreach (var t in floorTiles)
+    //            Gizmos.DrawWireCube(new Vector3((t.x + 0.5f) * cellSize, 0f, (t.y + 0.5f) * cellSize), Vector3.one * cellSize * 0.9f);
+    //    }
+    //}
+
+    //void OnValidate()
+    //{
+    //    gridWidth = Math.Max(3, gridWidth);
+    //    gridHeight = Math.Max(3, gridHeight);
+    //    numRooms = Math.Max(1, numRooms);
+    //    maxPlacementAttempts = Math.Max(1, maxPlacementAttempts);
+    //    minTurnSpacing = Math.Max(1, minTurnSpacing);
+    //    maxPathAttempts = Math.Max(1, maxPathAttempts);
+    //    roomSpacing = Math.Max(0, roomSpacing);
+
+    //    cellSize = Mathf.Max(0.01f, cellSize);
+    //    prefabNativeSize = Mathf.Max(0.01f, prefabNativeSize);
+    //}
+
+    // Returns world position of escape tile center
+    public Vector3 GetEscapePosition()
     {
-        if (!drawGizmos) return;
-
-        Gizmos.color = Color.green;
-        if (rooms != null)
+        Vector3 pos = new Vector3();
+        if (escapeRoomIndex >= 0 && escapeRoomIndex < rooms.Count)
         {
-            for (int i = 0; i < rooms.Count; i++)
-            {
-                var r = rooms[i].rect;
-                Vector3 pos = new Vector3((r.x + 0.5f) * cellSize, 0f, (r.y + 0.5f) * cellSize);
-                Vector3 size = new Vector3(r.width * cellSize, cellSize * 0.05f, r.height * cellSize);
-                Gizmos.DrawWireCube(pos, size);
-
-                if (i == startRoomIndex) Gizmos.color = Color.cyan;
-                Gizmos.DrawSphere(new Vector3((rooms[i].Center.x + 0.5f) * cellSize, 0f, (rooms[i].Center.y + 0.5f) * cellSize), cellSize * 0.125f);
-                if (i == startRoomIndex) Gizmos.color = Color.green;
-            }
+            Vector2Int escapePos = rooms[escapeRoomIndex].Center;
+            pos = new Vector3((escapePos.x + 0.5f) * cellSize, 0f, (escapePos.y + 0.5f) * cellSize);
         }
-
-        Gizmos.color = Color.yellow;
-        if (corridorTiles != null)
-        {
-            foreach (var t in corridorTiles)
-                Gizmos.DrawCube(new Vector3((t.x + 0.5f) * cellSize, 0f, (t.y + 0.5f) * cellSize), Vector3.one * cellSize * 0.9f);
-        }
-
-        Gizmos.color = Color.gray;
-        if (floorTiles != null)
-        {
-            foreach (var t in floorTiles)
-                Gizmos.DrawWireCube(new Vector3((t.x + 0.5f) * cellSize, 0f, (t.y + 0.5f) * cellSize), Vector3.one * cellSize * 0.9f);
-        }
-    }
-
-    void OnValidate()
-    {
-        gridWidth = Math.Max(3, gridWidth);
-        gridHeight = Math.Max(3, gridHeight);
-        numRooms = Math.Max(1, numRooms);
-        maxPlacementAttempts = Math.Max(1, maxPlacementAttempts);
-        minTurnSpacing = Math.Max(1, minTurnSpacing);
-        maxPathAttempts = Math.Max(1, maxPathAttempts);
-        roomSpacing = Math.Max(0, roomSpacing);
-
-        cellSize = Mathf.Max(0.01f, cellSize);
-        prefabNativeSize = Mathf.Max(0.01f, prefabNativeSize);
-    }
-
-    // Returns world-space start tile center or zero if invalid.
-    public Vector3 GetStartPosition()
-    {
-        if (startRoomIndex >= 0 && startRoomIndex < rooms.Count)
-        {
-            Vector2Int center = rooms[startRoomIndex].Center;
-            return new Vector3((center.x + 0.5f) * cellSize, 0f, (center.y + 0.5f) * cellSize);
-        }
-        return Vector3.zero;
+        return pos;
     }
 }
