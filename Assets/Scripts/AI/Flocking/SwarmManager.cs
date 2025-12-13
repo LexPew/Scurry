@@ -87,7 +87,7 @@ public class SwarmManager : MonoBehaviour
             else
             {
                 // If we failed, just try again next frame; no target change this time
-                Debug.Log("Failed to find pos");
+                //Debug.Log("Failed to find pos");
             }
         }
 

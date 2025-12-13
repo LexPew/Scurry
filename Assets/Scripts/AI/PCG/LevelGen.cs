@@ -102,9 +102,8 @@ public class LevelGen : MonoBehaviour
     [Tooltip("key prefab that spawns in random room(s).")]
     private GameObject keyPrefab;
 
-    [SerializeField]
     [Tooltip("Number of keys to place in the level.")]
-    private int keyCount = 3;
+    public int keyCount = 3;
 
     [SerializeField]
     [Tooltip("Minimum distance (manhattan) from escape room to place keys.")]

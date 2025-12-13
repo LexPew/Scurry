@@ -40,6 +40,8 @@ public class Player : MonoBehaviour
     // Booleans
     private bool canMove = true;
 
+    //key inventory
+    private int keys;
 
     // Start is called before the first frame update
     void Start()
@@ -164,5 +166,17 @@ public class Player : MonoBehaviour
             }
         }
 
+    }
+
+    //public method to add key to player's inventory
+    public void AddKey()
+    {
+        keys++;
+        Debug.Log("Keys collected: " + keys);
+    }
+
+    public int GetKeyCount()
+    {
+        return keys;
     }
 }

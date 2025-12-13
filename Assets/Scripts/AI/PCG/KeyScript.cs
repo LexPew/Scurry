@@ -4,13 +4,18 @@ using UnityEngine;
 
 public class KeyScript : MonoBehaviour
 {
+    //player reference
+    public GameObject player;
+    
     //collectible key script
     private void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("Player"))
         {
             Debug.Log("Player has collected the key!");
-            //logic to add key to player's inventory here
+            //add key to player's inventory 
+            player.GetComponent<Player>().AddKey();
+            //TODO: add key collection to ui and maybe play a sound effect
             //destroy the key object
             Destroy(gameObject);
         }
@@ -21,7 +26,6 @@ public class KeyScript : MonoBehaviour
     {
         //spin the key in world space
         transform.Rotate(Vector3.up * Time.deltaTime * 50, Space.World);
-
     }
 
 }
