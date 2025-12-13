@@ -57,4 +57,4 @@ MonoBehaviour:
     type: 3}
   swarmAgent: {fileID: 0}
   swarmTarget: {fileID: 0}
-  changeTargetInterval: 3
+  changeTargetInterval: 5

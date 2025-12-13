@@ -47,10 +47,13 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   swarmManager: {fileID: 0}
   visualTransform: {fileID: 1935323338548974363}
-  maxSpeed: 20
+  maxSpeed: 9
+  maxDistanceFromSwarmAgent: 4
   rotationSpeed: 6
-  approachRadius: 1
-  wallDetectDistance: 2
+  wallDetectDistance: 1
+  wallMask:
+    serializedVersion: 2
+    m_Bits: 128
 --- !u!1001 &2112503990846584048
 PrefabInstance:
   m_ObjectHideFlags: 0
@@ -67,17 +70,17 @@ PrefabInstance:
     - target: {fileID: -8679921383154817045, guid: 79f4db66b81c989f0b85bd224b154670,
         type: 3}
       propertyPath: m_LocalScale.x
-      value: 1
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 79f4db66b81c989f0b85bd224b154670,
         type: 3}
       propertyPath: m_LocalScale.y
-      value: 1
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 79f4db66b81c989f0b85bd224b154670,
         type: 3}
       propertyPath: m_LocalScale.z
-      value: 1
+      value: 0.5
       objectReference: {fileID: 0}
     - target: {fileID: -8679921383154817045, guid: 79f4db66b81c989f0b85bd224b154670,
         type: 3}

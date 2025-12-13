@@ -77,7 +77,7 @@ public class SwarmManager : MonoBehaviour
             randomDirection += transform.position;
 
             NavMeshHit navHit;
-            float maxSampleDistance = 2.0f; // small so we don't snap to far edges
+            float maxSampleDistance = 5.0f; // small so we don't snap to far edges
 
             if (NavMesh.SamplePosition(randomDirection, out navHit, maxSampleDistance, NavMesh.AllAreas))
             {
@@ -87,8 +87,11 @@ public class SwarmManager : MonoBehaviour
             else
             {
                 // If we failed, just try again next frame; no target change this time
+                Debug.Log("Failed to find pos");
             }
         }
+
+
     }
 
     void PopulateRats()

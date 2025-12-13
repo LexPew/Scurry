@@ -1,4 +1,5 @@
 
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AI;
 public class Rat : MonoBehaviour
@@ -7,9 +8,11 @@ public class Rat : MonoBehaviour
 
     [Header("Rat Settings")]
     [SerializeField] private Transform visualTransform;
-    [SerializeField] private float maxSpeed = 22.0f;        // Slightly lower for realism
+    [SerializeField] private float maxSpeed = 22.0f; 
+    [SerializeField] private float maxDistanceFromSwarmAgent = 60.0f; 
     [SerializeField] private float rotationSpeed = 9.0f;    // Allows smoother turning
     [SerializeField] private float wallDetectDistance = 10.0f;
+    [SerializeField] private LayerMask wallMask;
     private Vector3 velocity;
 
     void Start()
@@ -57,7 +60,22 @@ public class Rat : MonoBehaviour
             NavMesh.SamplePosition(transform.position, out hit, 100.0f, NavMesh.AllAreas);
             transform.position = hit.position;
         }
- 
+
+        //Check we arent too far from the target if we are sample a new position near the target and teleport there
+        float distanceFromTarget = Vector3.Distance(transform.position, swarmManager.swarmAgent.transform.position);
+        if(distanceFromTarget > maxDistanceFromSwarmAgent)
+        {
+            Vector3 randomDirection = UnityEngine.Random.insideUnitSphere * (maxDistanceFromSwarmAgent * 0.5f);
+            randomDirection.y = 0f; // keep on ground plane
+            randomDirection += swarmManager.swarmAgent.transform.position;
+
+            NavMeshHit navHit;
+            float maxSampleDistance = 10.0f; // small so we don't snap to far edges
+            if (NavMesh.SamplePosition(randomDirection, out navHit, maxSampleDistance, NavMesh.AllAreas))
+            {
+                transform.position = navHit.position;
+            }
+        }
     }
 
 
@@ -146,7 +164,7 @@ public class Rat : MonoBehaviour
     foreach (var dir in dirs)
     {
         RaycastHit hit;
-        if (Physics.Raycast(transform.position, dir, out hit, wallDetectDistance, LayerMask.GetMask("Walls")))
+        if (Physics.Raycast(transform.position, dir, out hit, wallDetectDistance, wallMask))
         {
             Vector3 away = hit.normal;
             away.y = 0;
@@ -160,8 +178,8 @@ public class Rat : MonoBehaviour
 
     void OnDrawGizmos()
     {
-        Gizmos.color = Color.green;
-        Gizmos.DrawLine(transform.position, transform.position + velocity.normalized * 2.0f);
+        Gizmos.color = Color.blue;
+        Gizmos.DrawLine(transform.position, transform.position + transform.forward * wallDetectDistance);
 
     }
 }
