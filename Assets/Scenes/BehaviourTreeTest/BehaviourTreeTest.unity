@@ -2232,6 +2232,11 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 5461087796896548520, guid: 63fb4259707ac8e4eb2e4d1f6da8a96d,
+        type: 3}
+      propertyPath: m_Camera
+      value: 
+      objectReference: {fileID: 0}
     - target: {fileID: 6470280735601303396, guid: 63fb4259707ac8e4eb2e4d1f6da8a96d,
         type: 3}
       propertyPath: m_Name
@@ -2724,8 +2729,8 @@ GameObject:
   - component: {fileID: 1753269879}
   - component: {fileID: 1753269882}
   m_Layer: 0
-  m_Name: Main Camera
-  m_TagString: MainCamera
+  m_Name: Wide view Camera
+  m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0

@@ -45,9 +45,11 @@ using UnityEngine.UIElements;
 
 public class BehaviourTree : MonoBehaviour
 {
+    // Private variables
     private BTNode tree;
     private Player player;
     
+    // Public variables
     [Header("Vision")]
     public float viewRadius = 60f;
     public float viewAngle = 180f;
@@ -67,6 +69,7 @@ public class BehaviourTree : MonoBehaviour
 
     void Start()
     {
+        // Initialising the Behaviour Tree
         player = FindObjectOfType<Player>();
         tree = new Selector(
             new Sequence(
@@ -193,6 +196,7 @@ public class MovementAction : BTNode
 
 public class PlayerVisibleNode : BTNode
 {
+    // Private variables
     private Player player;
     private Transform selfTransform;
     private float viewRadius;
@@ -200,7 +204,7 @@ public class PlayerVisibleNode : BTNode
     private LayerMask obstacleMask;
     private float eyeHeight;
 
-
+    // Constructor
     public PlayerVisibleNode(Player playerRef, GameObject self, float dist, float angle, LayerMask mask, float eye)
     {
         player = playerRef;
@@ -211,6 +215,7 @@ public class PlayerVisibleNode : BTNode
         eyeHeight = eye;
     }
 
+    // PlayerVisibleNode implementation
     public override bool Execute()
     {
         Debug.Log("Checking player visibility...");
