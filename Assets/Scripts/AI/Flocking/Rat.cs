@@ -1,4 +1,5 @@
 
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AI;
 public class Rat : MonoBehaviour
@@ -7,9 +8,11 @@ public class Rat : MonoBehaviour
 
     [Header("Rat Settings")]
     [SerializeField] private Transform visualTransform;
-    [SerializeField] private float maxSpeed = 22.0f;        // Slightly lower for realism
+    [SerializeField] private float maxSpeed = 22.0f; 
+    [SerializeField] private float maxDistanceFromSwarmAgent = 60.0f; 
     [SerializeField] private float rotationSpeed = 9.0f;    // Allows smoother turning
     [SerializeField] private float wallDetectDistance = 10.0f;
+    [SerializeField] private LayerMask wallMask;
     private Vector3 velocity;
 
     void Start()
@@ -28,10 +31,10 @@ public class Rat : MonoBehaviour
         Vector3 wallAvoidanceForce = WallAvoidance();
         //--- Steering and Movement ---
         Vector3 steerForce = Vector3.zero;
-        steerForce += cohesionForce * swarmManager.cohesionStrength;
-        steerForce += separationForce * swarmManager.separationStrength;
-        steerForce += alignForce * swarmManager.alignStrength;
-        steerForce += targetForce * swarmManager.targetStrength;
+        steerForce += cohesionForce * swarmManager.currentBehaviour.cohesionStrength;
+        steerForce += separationForce * swarmManager.currentBehaviour.separationStrength;
+        steerForce += alignForce * swarmManager.currentBehaviour.alignStrength;
+        steerForce += targetForce * swarmManager.currentBehaviour.targetStrength;
         //Wall avoidance is absolute to prevent collisions so we must multiply it by the combined magnitude of the other forces to keep balance
         float combinedForceMagnitude = steerForce.magnitude;
         steerForce += wallAvoidanceForce * (combinedForceMagnitude * 6.0f);
@@ -57,7 +60,22 @@ public class Rat : MonoBehaviour
             NavMesh.SamplePosition(transform.position, out hit, 100.0f, NavMesh.AllAreas);
             transform.position = hit.position;
         }
- 
+
+        //Check we arent too far from the target if we are sample a new position near the target and teleport there
+        float distanceFromTarget = Vector3.Distance(transform.position, swarmManager.swarmAgent.transform.position);
+        if(distanceFromTarget > maxDistanceFromSwarmAgent)
+        {
+            Vector3 randomDirection = UnityEngine.Random.insideUnitSphere * (maxDistanceFromSwarmAgent * 0.5f);
+            randomDirection.y = 0f; // keep on ground plane
+            randomDirection += swarmManager.swarmAgent.transform.position;
+
+            NavMeshHit navHit;
+            float maxSampleDistance = 10.0f; // small so we don't snap to far edges
+            if (NavMesh.SamplePosition(randomDirection, out navHit, maxSampleDistance, NavMesh.AllAreas))
+            {
+                transform.position = navHit.position;
+            }
+        }
     }
 
 
@@ -70,7 +88,7 @@ public class Rat : MonoBehaviour
         foreach (Rat rat in swarmManager.rats)
         {
             if (rat != this &&
-                Vector3.Distance(transform.position, rat.transform.position) < swarmManager.perceptionRadius)
+                Vector3.Distance(transform.position, rat.transform.position) < swarmManager.currentBehaviour.perceptionRadius)
             {
                 closeBoidCount++;
                 sum += rat.transform.position;
@@ -92,7 +110,7 @@ public class Rat : MonoBehaviour
         {
             //Check if we are not comparing to ourselves and if the rat is within separation distance
             if (rat != this &&
-                Vector3.Distance(transform.position, rat.transform.position) < swarmManager.seperationDistance)
+                Vector3.Distance(transform.position, rat.transform.position) < swarmManager.currentBehaviour.seperationDistance)
             {
                 //Update the close boid counter and then calculate the difference vector, normalize it and weight it by distance.
                 //Example: If we have our boid at (0,0,0) and another at (2,0,0), the difference vector is (-2,0,0).
@@ -119,7 +137,7 @@ public class Rat : MonoBehaviour
         foreach (Rat rat in swarmManager.rats)
         {
             if (rat != this &&
-                Vector3.Distance(transform.position, rat.transform.position) < swarmManager.alignDistance)
+                Vector3.Distance(transform.position, rat.transform.position) < swarmManager.currentBehaviour.alignDistance)
             {
                 closeBoidCount++;
                 //Simply add all the velocities of nearby boids together and then in the end we will average them.
@@ -146,7 +164,7 @@ public class Rat : MonoBehaviour
     foreach (var dir in dirs)
     {
         RaycastHit hit;
-        if (Physics.Raycast(transform.position, dir, out hit, wallDetectDistance, LayerMask.GetMask("Walls")))
+        if (Physics.Raycast(transform.position, dir, out hit, wallDetectDistance, wallMask))
         {
             Vector3 away = hit.normal;
             away.y = 0;
@@ -160,8 +178,8 @@ public class Rat : MonoBehaviour
 
     void OnDrawGizmos()
     {
-        Gizmos.color = Color.green;
-        Gizmos.DrawLine(transform.position, transform.position + velocity.normalized * 2.0f);
+        Gizmos.color = Color.blue;
+        Gizmos.DrawLine(transform.position, transform.position + transform.forward * wallDetectDistance);
 
     }
 }

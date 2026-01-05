@@ -18,15 +18,11 @@ public class SwarmManager : MonoBehaviour
     [SerializeField] private float swarmRoamRadius = 40;   // 100 is very large; 40–70 is more controllable
     [SerializeField] private int ratCount = 60;
 
-    // Flocking parameters
-    public float cohesionStrength = 0.65f;      // Pull toward center of mass
-    public float separationStrength = 2.0f;    // Higher to prevent overlap
-    public float alignStrength = 0.15f;        // Keep similar heading
-    public float targetStrength = 90.0f;       // Lower so target doesn't dominate decisions
-
-    public float perceptionRadius = 14.0f;     // Slight increase for smoother cohesion
-    public float seperationDistance = 4.0f;    // Tighter cluster but no overlaps
-    public float alignDistance = 12.0f;        // Larger area to match movement direction
+    //Swarm Settings
+    public SwarmSettings currentBehaviour;
+    public SwarmSettings defaultBehaviour;
+    public SwarmSettings chaseBehaviour;
+    public SwarmSettings fleeBehaviour;
 
     //Swarm Agent Variables
     public GameObject swarmAgentPrefab;
@@ -42,6 +38,8 @@ public class SwarmManager : MonoBehaviour
 
     void Start()
     {
+        //Test
+        currentBehaviour = defaultBehaviour;
 
         //Create swarm agent
         if (swarmAgentPrefab != null)
@@ -79,7 +77,7 @@ public class SwarmManager : MonoBehaviour
             randomDirection += transform.position;
 
             NavMeshHit navHit;
-            float maxSampleDistance = 2.0f; // small so we don't snap to far edges
+            float maxSampleDistance = 5.0f; // small so we don't snap to far edges
 
             if (NavMesh.SamplePosition(randomDirection, out navHit, maxSampleDistance, NavMesh.AllAreas))
             {
@@ -89,8 +87,11 @@ public class SwarmManager : MonoBehaviour
             else
             {
                 // If we failed, just try again next frame; no target change this time
+                //Debug.Log("Failed to find pos");
             }
         }
+
+
     }
 
     void PopulateRats()
@@ -108,5 +109,21 @@ public class SwarmManager : MonoBehaviour
         //Draw swarm roam radius
         Gizmos.color = Color.cyan;
         Gizmos.DrawWireSphere(transform.position, swarmRoamRadius);
+    }
+
+    [ContextMenu("Flee Swarm")]
+    public void FleeSwarm()
+    {
+        currentBehaviour = fleeBehaviour;
+    }
+    [ContextMenu("Chase Swarm")]
+    public void ChaseSwarm()
+    {
+        currentBehaviour = chaseBehaviour;
+    }
+    [ContextMenu("Default Swarm Behaviour")]
+    public void DefaultSwarmBehaviour()
+    {
+        currentBehaviour = defaultBehaviour;
     }
 }

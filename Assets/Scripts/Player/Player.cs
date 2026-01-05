@@ -7,9 +7,6 @@ using UnityEngine.InputSystem;
 
 public class Player : MonoBehaviour
 {
-
-    public bool HasInteracted { get; private set; }
-
     // Movement Settings
     [Header("Movement Settings")]
     public float walkSpeed = 6f;
@@ -43,6 +40,8 @@ public class Player : MonoBehaviour
     // Booleans
     private bool canMove = true;
 
+    //key inventory
+    private int keys;
 
     // Start is called before the first frame update
     void Start()
@@ -72,7 +71,6 @@ public class Player : MonoBehaviour
         // Update camera position
         playerCamera.transform.position = characterController.transform.position + new Vector3(0, cameraZoom, 0);
 
-        HasInteracted = Input.GetKeyDown(KeyCode.E);
 
     }
 
@@ -85,7 +83,7 @@ public class Player : MonoBehaviour
         //Im using raw for snappier input response
         float vertical = playerInput.actions["Move"].ReadValue<Vector2>().y;
         float horizontal = playerInput.actions["Move"].ReadValue<Vector2>().x;
-        //Debug.Log("Vertical Input: " + vertical + " Horizontal Input: " + horizontal);
+   
         Vector3 move = forward * vertical + right * horizontal;
 
         // Normalize only if diagonal
@@ -168,5 +166,17 @@ public class Player : MonoBehaviour
             }
         }
 
+    }
+
+    //public method to add key to player's inventory
+    public void AddKey()
+    {
+        keys++;
+        Debug.Log("Keys collected: " + keys);
+    }
+
+    public int GetKeyCount()
+    {
+        return keys;
     }
 }
