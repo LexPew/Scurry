@@ -205,7 +205,7 @@ public class PlayerVisibleNode : BTNode
     public PlayerVisibleNode(Player playerRef, GameObject self, float dist, float angle, LayerMask mask, float eye)
     {
         player = playerRef;
-        selfTransform = self != null ? self.transform : null;
+        selfTransform = self.transform;
         viewRadius = dist;
         viewAngle = angle;
         obstacleMask = mask;
