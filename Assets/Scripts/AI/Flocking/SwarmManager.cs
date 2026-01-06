@@ -67,6 +67,7 @@ public class SwarmManager : MonoBehaviour
 
     void Update()
     {
+        return; // Adding this to overhaul movement with Behaviour Trees
         //Update timer
         timeSinceLastTargetChange += Time.deltaTime;
         //If it's time to change target then find a random position within the roam radius and set it as the new target, avoiding the edges of the navmesh

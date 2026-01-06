@@ -64,7 +64,7 @@ public class BehaviourTree : MonoBehaviour
 
     [Header("References")]
     public GameObject self; // Self reference
-    
+    //public GameObject NavMeshAgent; // NavMeshAgent reference
 
 
     void Start()
@@ -95,14 +95,14 @@ public abstract class BTNode // Base Behaviour Tree Node
 // A pathway of the tree
 public class Sequence : BTNode // Sequencer Node
 {
-    private List<BTNode> children = new List<BTNode>();
+    private List<BTNode> children = new List<BTNode>(); // Private list that holds our children
 
-    public Sequence(params BTNode[] nodes)
+    public Sequence(params BTNode[] nodes) // Add nodes to our list of children
     {
         children.AddRange(nodes);
     }
 
-    public override bool Execute()
+    public override bool Execute() // Loop through children and run their code
     {
         foreach (var child in children)
         {
@@ -116,16 +116,17 @@ public class Sequence : BTNode // Sequencer Node
 // A branching point in the tree
 public class Selector : BTNode // Selector Node
 {
+    // Private list that holds our children
     private List<BTNode> children = new List<BTNode>();
 
-    public Selector(params BTNode[] nodes)
+    public Selector(params BTNode[] nodes) // Add nodes to our list of children
     {
         children.AddRange(nodes);
     }
 
     public override bool Execute()
     {
-        foreach (var child in children)
+        foreach (var child in children) // Loop through children and run their code
         {
             if (child.Execute())
                 return true;
@@ -134,8 +135,8 @@ public class Selector : BTNode // Selector Node
     }
 }
 
+// Not used
 // prints to the console
-
 public class PrintAction : BTNode // A leaf node, prints a message
 {
     private string message;
@@ -149,16 +150,14 @@ public class PrintAction : BTNode // A leaf node, prints a message
 
     public override bool Execute()
     {
-        if (player != null && player.HasInteracted)
-        {
-            Debug.Log(message);
-            return true; // Always succeeds
-        }
-        return false;
+        
+        Debug.Log(message);
+        return true; // Always succeeds
     }
 
 }
 
+// Not used currently, very basic starting movement node
 // Movement action node
 public class MovementAction : BTNode
 {
@@ -177,28 +176,26 @@ public class MovementAction : BTNode
     {
         if (player != null)
         {
-            //m_self.transform.position = Vector3.MoveTowards(m_self.transform.position, position, 5f);
-            
-           // Debug.Log("Moving to: " + position);
+            m_self.transform.position = Vector3.MoveTowards(m_self.transform.position, position, 5f);
+
+            // Debug.Log("Moving to: " + position);
 
             return true; // When it gets to the position, we need it to move on
         }
-
-
         return false;
-        //throw new System.NotImplementedException();
     }
 }
 
 
-//has player been seen action
 
-
+// Player Visible Node, checks whether the player is currently visible to our AI
 public class PlayerVisibleNode : BTNode
 {
-    // Private variables
+    // Private references
     private Player player;
     private Transform selfTransform;
+
+    // Vision parameters
     private float viewRadius;
     private float viewAngle;
     private LayerMask obstacleMask;
@@ -218,14 +215,16 @@ public class PlayerVisibleNode : BTNode
     // PlayerVisibleNode implementation
     public override bool Execute()
     {
-        Debug.Log("Checking player visibility...");
+        //Debug.Log("Checking player visibility..."); // Debug message to denote state
+
+        // Check if we or the player is null
         if (player == null || selfTransform == null)
             return false;
 
         // Compute vector to player and squared distance
-        Vector3 toPlayer = player.transform.position - selfTransform.position;
-        float sqrDist = toPlayer.sqrMagnitude;
-        if (sqrDist > viewRadius * viewRadius)
+        Vector3 toPlayer = player.transform.position - selfTransform.position; // Distance from us to player
+        float sqrDist = toPlayer.sqrMagnitude; // Squared distance for efficiency
+        if (sqrDist > viewRadius * viewRadius) // Outside of view radius
             return false;
 
         // Horizontal checks
@@ -240,74 +239,83 @@ public class PlayerVisibleNode : BTNode
         if (angleToPlayer > viewAngle * 0.5f)
             return false;
 
-        // Line-of-sight check using raycast from eye position
+        // Vision check using raycast from eye position (not as necessary now, but will continue to use as it still works)
         Vector3 origin = selfTransform.position + Vector3.up * eyeHeight;
         Vector3 dir = (player.transform.position - origin).normalized;
         float distance = Mathf.Sqrt(sqrDist);
 
 
-        // Use RaycastAll and ignore hits that belong to self (or its children)
+        // Use RaycastAll so can see what is hit first
         RaycastHit[] hits = Physics.RaycastAll(origin, dir, distance, obstacleMask, QueryTriggerInteraction.Ignore);
+
+        // Sort the hits based on distance
         System.Array.Sort(hits, (a, b) => a.distance.CompareTo(b.distance));
 
+        // Loop through hits to denote what is visible first
         foreach (var hit in hits)
         {
-            if (hit.collider == null) continue;
+            if (hit.collider == null) continue; // Ignore immediately if hit nothing
 
-            GameObject hitGo = hit.collider.gameObject;
+            GameObject hitObj = hit.collider.gameObject; // Get the hit object
 
-            // ignore self colliders (root or children)
-            if (hitGo == selfTransform.gameObject || hit.collider.transform.IsChildOf(selfTransform))
+            // Ignore ourselves
+            if (hitObj == selfTransform.gameObject || hit.collider.transform.IsChildOf(selfTransform))
                 continue;
 
-            // if we hit the player first -> visible
-            if (hitGo == player.gameObject || hit.collider.transform.IsChildOf(player.transform))
+            // If after ignoring ourselves, we hit the player, then we can see them
+            if (hitObj == player.gameObject || hit.collider.transform.IsChildOf(player.transform))
                 return true;
 
-            // hit some other obstacle before player -> blocked
-            Debug.Log($"LOS blocked by {hitGo.name}");
+            // Debug.Log($"LOS blocked by {hitGo.name}"); // Debug log to show what is blocking vision
             return false;
         }
-
-        // no intervening hits -> visible
         return true;
     }
 }
 
-//chase player action
 
+// Chase Node, so the AI can chase the player when seen
 public class ChaseActionNode : BTNode
 {
+    // References
     private Player player;
+    private GameObject selfGameObj;
     private Transform selfTransform;
     private NavMeshAgent agent;
+
+    // Speed parameters
     private float chaseSpeed;
 
+    // Constructor
     public ChaseActionNode(Player playerRef, GameObject self, float speed)
     {
+        selfGameObj = self;
         player = playerRef;
-        selfTransform = self != null ? self.transform : null;
+        selfTransform = self.transform;
         chaseSpeed = speed;
         if (self != null)
             agent = self.GetComponent<NavMeshAgent>();
+
     }
 
     public override bool Execute()
     {
-        Debug.Log("Chasing player...");
-        if (player == null || selfTransform == null)
+        //Debug.Log("Chasing player..."); // Debug log to denote state
+
+        if (player == null || selfTransform == null) // Check whether the player or self is null
             return false;
 
-        if (agent == null)
-        {
-            agent = selfTransform.GetComponent<NavMeshAgent>();
-            if (agent == null)
-                return false; // No NavMeshAgent -> can't chase with NavMesh
-        }
+        if (agent == null) // Check for NavMeshAgent
+            return false;
+        
 
+        // Set the speed to chase speed and ensure the agent is moving
         agent.speed = chaseSpeed;
         agent.isStopped = false;
-        agent.SetDestination(player.transform.position);
+
+        // Set the target position to the player's current position
+        selfTransform.GetComponent<SwarmAgent>().SetTargetPosition(player.transform.position);
+
         return true;
     }
 }
@@ -317,46 +325,53 @@ public class ChaseActionNode : BTNode
 
 
 
-//roam action
+// Roam action, the AI will do this when it cannot see the player or is not chasing them
 public class RoamActionNode : BTNode
 {
+    // Private references
     private Transform selfTransform;
+    private GameObject selfGameObj;
     private NavMeshAgent agent;
+
+    // Roaming parameters
     private float roamRadius;
     private float roamSpeed;
     private float arriveThreshold;
+
+    // Target management
     private Vector3 currentTarget;
     private bool hasTarget = false;
 
+    // Constructor
     public RoamActionNode(GameObject self, float radius, float speed, float threshold)
     {
-        selfTransform = self != null ? self.transform : null;
+        selfGameObj = self;
+        selfTransform = self.transform;
         roamRadius = Mathf.Max(0.1f, radius);
         roamSpeed = speed;
         arriveThreshold = Mathf.Max(0.01f, threshold);
-        if (self != null)
-            agent = self.GetComponent<NavMeshAgent>();
+        agent = self.GetComponent<NavMeshAgent>();
     }
 
     public override bool Execute()
     {
-        Debug.Log("Roaming...");
-        if (selfTransform == null)
+        //Debug.Log("Roaming..."); // Debug message to indicate state
+        if (selfTransform == null) // Check if we are null
             return false;
 
-        if (agent == null)
-        {
-            agent = selfTransform.GetComponent<NavMeshAgent>();
-            if (agent == null)
-                return false; // No NavMeshAgent -> can't roam with NavMesh
-        }
+        if (agent == null) // Check for NavMeshAgent
+            return false; // No NavMeshAgent means we cannot roam using this implementation
+        
 
+        // Set the speed and ensure the agent is moving
         agent.speed = roamSpeed;
         agent.isStopped = false;
 
+        // If we don't have a target, pick a new one
         if (!hasTarget)
             PickNewTargetOnNavMesh();
 
+        // Check if we've arrived at the target
         if (hasTarget)
         {
             if (!agent.pathPending && agent.remainingDistance <= arriveThreshold)
@@ -370,15 +385,19 @@ public class RoamActionNode : BTNode
 
     private void PickNewTargetOnNavMesh()
     {
-        Vector3 randomPoint = selfTransform.position + Random.insideUnitSphere * roamRadius;
-        randomPoint.y = selfTransform.position.y;
+        Vector3 randomPoint = selfTransform.position + Random.insideUnitSphere * roamRadius; // Select a random point within the roam radius
+        randomPoint.y = selfTransform.position.y; // Ignore Y
 
         // Sample the NavMesh to find a reachable point near the random point
         if (NavMesh.SamplePosition(randomPoint, out NavMeshHit hit, 10.0f, NavMesh.AllAreas))
         {
-            currentTarget = hit.position;
-            hasTarget = true;
-            agent.SetDestination(currentTarget);
+            
+            currentTarget = hit.position; // Update the current target, so we can feed it to the SwarmAgent
+            hasTarget = true; // Set to true so target isn't overwritten
+            selfGameObj.GetComponent<SwarmAgent>().SetTargetPosition(currentTarget);
+            
+
+
         }
         else
         {
